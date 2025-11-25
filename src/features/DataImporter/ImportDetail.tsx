@@ -11,7 +11,7 @@ import { Flexbox } from 'react-layout-kit';
 import { ImportPgDataStructure } from '@/types/export';
 
 const getNonEmptyTables = (data: ImportPgDataStructure) => {
-  const result = [];
+  const result: { count: number; name: string }[] = [];
 
   for (const [key, value] of Object.entries(data.data)) {
     if (Array.isArray(value) && value.length > 0) {

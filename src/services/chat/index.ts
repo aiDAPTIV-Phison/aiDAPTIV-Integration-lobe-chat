@@ -217,6 +217,36 @@ class ChatService {
     );
   };
 
+  buildKVCache = async (params: Partial<ChatStreamPayload>) => {
+    const payload = merge(
+      {
+        max_tokens: 1,
+        model: DEFAULT_AGENT_CONFIG.model,
+        stream: false,
+        ...DEFAULT_AGENT_CONFIG.params,
+      },
+      params,
+    );
+
+    try {
+      const headers = await createHeaderWithAuth({
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        provider: payload.provider || ModelProvider.OpenAI,
+      });
+
+      await fetchSSE(API_ENDPOINTS.chat(payload.provider || ModelProvider.OpenAI), {
+        body: JSON.stringify(payload),
+        headers,
+        method: 'POST',
+        onMessageHandle: () => {}, // Ignore output
+      });
+    } catch (e) {
+      console.error('Build KV Cache failed', e);
+    }
+  };
+
   createAssistantMessageStream = async ({
     params,
     abortController,

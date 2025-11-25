@@ -8,6 +8,7 @@ import { MESSAGE_CANCEL_FLAT } from '@/const/message';
 import { INBOX_SESSION_ID } from '@/const/session';
 import { useClientDataSWR, useOnlyFetchOnceSWR } from '@/libs/swr';
 import { agentService } from '@/services/agent';
+import { chatService } from '@/services/chat';
 import { sessionService } from '@/services/session';
 import { AgentState } from '@/store/agent/slices/chat/initialState';
 import { useSessionStore } from '@/store/session';
@@ -157,6 +158,31 @@ export const createChatSlice: StateCreator<
     const controller = get().internal_createAbortController('updateAgentConfigSignal');
 
     await get().internal_updateAgentConfig(activeId, config, controller.signal);
+
+    // Trigger KV Cache Build
+    const { kvCacheBuildTimeout } = get();
+    if (kvCacheBuildTimeout) {
+      clearTimeout(kvCacheBuildTimeout);
+    }
+
+    const timeout = setTimeout(async () => {
+      const state = get();
+      const fullConfig = agentSelectors.currentAgentConfig(state);
+
+      // Only build if systemRole is present
+      if (!fullConfig.systemRole) return;
+
+      const messages = [{ content: fullConfig.systemRole, role: 'system' }] as any[];
+
+      await chatService.buildKVCache({
+        messages,
+        model: fullConfig.model,
+        provider: fullConfig.provider,
+        ...fullConfig.params,
+      });
+    }, 2000);
+
+    set({ kvCacheBuildTimeout: timeout });
   },
   useFetchAgentConfig: (isLogin, sessionId) =>
     useClientDataSWR<LobeAgentConfig>(
@@ -172,6 +198,7 @@ export const createChatSlice: StateCreator<
           set(
             {
               activeAgentId: data.id,
+              activeId: sessionId,
               agentConfigInitMap: { ...get().agentConfigInitMap, [sessionId]: true },
             },
             false,

@@ -12,6 +12,7 @@ export interface AgentState {
   agentSettingInstance?: AgentSettingsInstance | null;
   defaultAgentConfig: LobeAgentConfig;
   isInboxAgentConfigInit: boolean;
+  kvCacheBuildTimeout?: ReturnType<typeof setTimeout>;
   showAgentSetting: boolean;
   updateAgentChatConfigSignal?: AbortController;
   updateAgentConfigSignal?: AbortController;
