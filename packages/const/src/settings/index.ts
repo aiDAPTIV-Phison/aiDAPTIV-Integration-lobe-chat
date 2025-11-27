@@ -25,7 +25,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
   general: DEFAULT_COMMON_SETTINGS,
   hotkey: DEFAULT_HOTKEY_CONFIG,
   image: DEFAULT_IMAGE_CONFIG,
-  keyVaults: {},
+  keyVaults: {
+    openai: {
+      baseURL: 'http://127.0.0.1:13141/v1',
+    },
+  },
   languageModel: DEFAULT_LLM_CONFIG,
   systemAgent: DEFAULT_SYSTEM_AGENT_CONFIG,
   tool: DEFAULT_TOOL_CONFIG,

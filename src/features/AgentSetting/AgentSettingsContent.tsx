@@ -1,5 +1,6 @@
 import { ReactNode, memo } from 'react';
 
+import { INBOX_SESSION_ID } from '@/const/session';
 import { useStore } from '@/features/AgentSetting/store';
 import { ChatSettingsTabs } from '@/store/global/initialState';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
@@ -19,13 +20,14 @@ export interface AgentSettingsContentProps {
 
 const AgentSettingsContent = memo<AgentSettingsContentProps>(({ tab, loadingSkeleton }) => {
   const loading = useStore((s) => s.loading);
+  const isInbox = useStore((s) => s.id === INBOX_SESSION_ID);
   const { enablePlugins } = useServerConfigStore(featureFlagsSelectors);
 
   if (loading) return loadingSkeleton;
 
   return (
     <>
-      {tab === ChatSettingsTabs.Meta && <AgentMeta />}
+      {tab === ChatSettingsTabs.Meta && !isInbox && <AgentMeta />}
       {tab === ChatSettingsTabs.Prompt && <AgentPrompt />}
       {tab === ChatSettingsTabs.Opening && <AgentOpening />}
       {tab === ChatSettingsTabs.Chat && <AgentChat />}

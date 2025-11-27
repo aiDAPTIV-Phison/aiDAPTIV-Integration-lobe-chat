@@ -42,7 +42,7 @@
     "clean:node_modules": "bash -lc 'set -e; echo \"Removing all node_modules...\"; rm -rf node_modules; pnpm -r exec rm -rf node_modules; rm -rf apps/desktop/node_modules; echo \"All node_modules removed.\"'",
     "db:generate": "drizzle-kit generate && npm run db:generate-client && npm run workflow:dbml",
     "db:generate-client": "tsx ./scripts/migrateClientDB/compile-migrations.ts",
-    "db:migrate": "MIGRATION_DB=1 tsx ./scripts/migrateServerDB/index.ts",
+    "db:migrate": "cross-env MIGRATION_DB=1 tsx ./scripts/migrateServerDB/index.ts",
     "db:studio": "drizzle-kit studio",
     "db:visualize": "dbdocs build docs/development/database-schema.dbml --project lobe-chat",
     "desktop:build": "npm run desktop:build-next && npm run desktop:prepare-dist && npm run desktop:build-electron",
@@ -395,7 +395,22 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@vercel/speed-insights"
+      "@clerk/shared",
+      "@playwright/browser-chromium",
+      "@scarf/scarf",
+      "@tree-sitter-grammars/tree-sitter-yaml",
+      "@vercel/speed-insights",
+      "better-sqlite3",
+      "canvas",
+      "core-js",
+      "core-js-pure",
+      "es5-ext",
+      "esbuild",
+      "protobufjs",
+      "sharp",
+      "tree-sitter",
+      "tree-sitter-json",
+      "unrs-resolver"
     ]
   }
 }

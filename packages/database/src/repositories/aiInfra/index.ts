@@ -22,6 +22,7 @@ import { AiProviderModel } from '../../models/aiProvider';
 import { LobeChatDatabase } from '../../type';
 
 type DecryptUserKeyVaults = (encryptKeyVaultsStr: string | null) => Promise<any>;
+type EncryptUserKeyVaults = (keyVaults: string) => Promise<string>;
 
 /**
  * Provider 级默认表（只在本地内置模型没给出 settings.searchImpl 和 settings.searchProvider 时使用）
@@ -293,8 +294,12 @@ export class AiInfraRepos {
   /**
    * use in the `/settings?active=provider&provider=[id]` page
    */
-  getAiProviderDetail = async (id: string, decryptor?: DecryptUserKeyVaults) => {
-    const config = await this.aiProviderModel.getAiProviderById(id, decryptor);
+  getAiProviderDetail = async (
+    id: string,
+    decryptor?: DecryptUserKeyVaults,
+    encryptor?: EncryptUserKeyVaults,
+  ) => {
+    const config = await this.aiProviderModel.getAiProviderById(id, decryptor, encryptor);
 
     return merge(this.providerConfigs[id] || {}, config) as AiProviderDetailItem;
   };

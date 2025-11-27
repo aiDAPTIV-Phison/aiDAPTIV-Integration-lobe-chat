@@ -136,6 +136,22 @@ export const createSessionSlice: StateCreator<
       });
     }
 
+    // Warmup KV Cache
+    const { model, provider } = newSession.config;
+    if (model) {
+      import('@/services/chat').then(({ chatService }) => {
+        void chatService
+          .createAssistantMessage({
+            messages: [],
+            model,
+            provider,
+          })
+          .catch(() => {
+            // ignore error
+          });
+      });
+    }
+
     // Whether to goto  to the new session after creation, the default is to switch to
     if (isSwitchSession) switchSession(id);
 

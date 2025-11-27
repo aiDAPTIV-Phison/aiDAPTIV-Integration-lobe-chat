@@ -152,6 +152,7 @@ export const createChatSlice: StateCreator<
   },
   updateAgentConfig: async (config) => {
     const { activeId } = get();
+    console.log('[Debug] updateAgentConfig called', { activeId, config });
 
     if (!activeId) return;
 
@@ -159,12 +160,8 @@ export const createChatSlice: StateCreator<
 
     await get().internal_updateAgentConfig(activeId, config, controller.signal);
 
-    // Trigger KV Cache Build
-    const { kvCacheBuildTimeout } = get();
-    if (kvCacheBuildTimeout) {
-      clearTimeout(kvCacheBuildTimeout);
-    }
-
+    // KV Cache Build
+    clearTimeout(get().kvCacheBuildTimeout);
     const timeout = setTimeout(async () => {
       const state = get();
       const fullConfig = agentSelectors.currentAgentConfig(state);

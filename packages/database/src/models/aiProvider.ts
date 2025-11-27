@@ -180,6 +180,7 @@ export class AiProviderModel {
   getAiProviderById = async (
     id: string,
     decryptor?: DecryptUserKeyVaults,
+    encryptor?: EncryptUserKeyVaults,
   ): Promise<AiProviderDetailItem | undefined> => {
     const query = this.db
       .select({
@@ -204,7 +205,18 @@ export class AiProviderModel {
     if (!result) {
       // if the provider is builtin but not init, we will insert it to the db
       if (this.isBuiltInProvider(id)) {
-        await this.db.insert(aiProviders).values({ id, source: 'builtin', userId: this.userId });
+        let keyVaults = null;
+        if (id === 'openai' && encryptor) {
+          const baseURL = process.env.OPENAI_PROXY_URL || 'http://127.0.0.1:13141/v1';
+          keyVaults = await encryptor(JSON.stringify({ baseURL }));
+        }
+
+        await this.db.insert(aiProviders).values({
+          id,
+          keyVaults,
+          source: 'builtin',
+          userId: this.userId,
+        });
 
         const resultAgain = await query;
 

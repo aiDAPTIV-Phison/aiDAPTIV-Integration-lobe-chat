@@ -1,4 +1,7 @@
-import { isProviderDisableBrowserRequest } from '@/config/modelProviders';
+import {
+  DEFAULT_MODEL_PROVIDER_LIST,
+  isProviderDisableBrowserRequest,
+} from '@/config/modelProviders';
 import { AIProviderStoreState } from '@/store/aiInfra/initialState';
 import { AiProviderRuntimeConfig } from '@/types/aiProvider';
 import { GlobalLLMProviderKey } from '@/types/user/settings';
@@ -107,6 +110,12 @@ const isProviderEnableResponseApi = (id: string) => (s: AIProviderStoreState) =>
   const enableResponseApi = providerCfg?.config?.enableResponseApi;
 
   if (typeof enableResponseApi === 'boolean') return enableResponseApi;
+
+  const staticProvider = DEFAULT_MODEL_PROVIDER_LIST.find((p) => p.id === id);
+
+  if (typeof staticProvider?.settings?.supportResponsesApi === 'boolean') {
+    return staticProvider.settings.supportResponsesApi;
+  }
 
   return id === 'openai';
 };

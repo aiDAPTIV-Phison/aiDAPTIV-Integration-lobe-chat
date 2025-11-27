@@ -5,13 +5,13 @@ services:
     container_name: lobe-network
     restart: always
     ports:
-      - '${MINIO_PORT}:${MINIO_PORT}' # MinIO API
-      - '9001:9001' # MinIO Console
-      - '${CASDOOR_PORT}:${CASDOOR_PORT}' # Casdoor
-      - '${LOBE_PORT}:3210' # LobeChat
-      - '3000:3000' # Grafana
-      - '4318:4318' # otel-collector HTTP
-      - '4317:4317' # otel-collector gRPC
+      - "${MINIO_PORT}:${MINIO_PORT}" # MinIO API
+      - "9001:9001" # MinIO Console
+      - "${CASDOOR_PORT}:${CASDOOR_PORT}" # Casdoor
+      - "${LOBE_PORT}:3210" # LobeChat
+      - "3015:3000" # Grafana
+      - "4318:4318" # otel-collector HTTP
+      - "4317:4317" # otel-collector gRPC
     command: tail -f /dev/null
     networks:
       - lobe-network
@@ -20,14 +20,14 @@ services:
     image: pgvector/pgvector:pg17
     container_name: lobe-postgres
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
-      - './data:/var/lib/postgresql/data'
+      - "./data:/var/lib/postgresql/data"
     environment:
-      - 'POSTGRES_DB=${LOBE_DB_NAME}'
-      - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
+      - "POSTGRES_DB=${LOBE_DB_NAME}"
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -38,11 +38,11 @@ services:
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     container_name: lobe-minio
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     volumes:
-      - './s3_data:/etc/minio/data'
+      - "./s3_data:/etc/minio/data"
     environment:
-      - 'MINIO_API_CORS_ALLOW_ORIGIN=*'
+      - "MINIO_API_CORS_ALLOW_ORIGIN=*"
     env_file:
       - .env
     restart: always
@@ -66,16 +66,16 @@ services:
     image: casbin/casdoor:v2.13.0
     container_name: lobe-casdoor
     entrypoint: /bin/sh -c './server --createDatabase=true'
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     depends_on:
       postgresql:
         condition: service_healthy
     environment:
       httpport: ${CASDOOR_PORT}
-      RUNNING_IN_DOCKER: 'true'
-      driverName: 'postgres'
-      dataSourceName: 'user=postgres password=${POSTGRES_PASSWORD} host=postgresql port=5432 sslmode=disable dbname=casdoor'
-      runmode: 'dev'
+      RUNNING_IN_DOCKER: "true"
+      driverName: "postgres"
+      dataSourceName: "user=postgres password=${POSTGRES_PASSWORD} host=postgresql port=5432 sslmode=disable dbname=casdoor"
+      runmode: "dev"
     volumes:
       - ./init_data.json:/init_data.json
     env_file:
@@ -85,9 +85,9 @@ services:
     image: searxng/searxng
     container_name: lobe-searxng
     volumes:
-      - './searxng-settings.yml:/etc/searxng/settings.yml'
+      - "./searxng-settings.yml:/etc/searxng/settings.yml"
     environment:
-      - 'SEARXNG_SETTINGS_FILE=/etc/searxng/settings.yml'
+      - "SEARXNG_SETTINGS_FILE=/etc/searxng/settings.yml"
     restart: always
     networks:
       - lobe-network
@@ -97,7 +97,7 @@ services:
   lobe:
     image: lobehub/lobe-chat-database
     container_name: lobe-chat
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     depends_on:
       postgresql:
         condition: service_healthy
@@ -109,18 +109,18 @@ services:
         condition: service_started
 
     environment:
-      - 'NEXT_AUTH_SSO_PROVIDERS=casdoor'
-      - 'KEY_VAULTS_SECRET=Kix2wcUONd4CX51E/ZPAd36BqM4wzJgKjPtz2sGztqQ='
-      - 'NEXT_AUTH_SECRET=NX2kaPE923dt6BL2U8e9oSre5RfoT7hg'
-      - 'DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgresql:5432/${LOBE_DB_NAME}'
-      - 'S3_BUCKET=${MINIO_LOBE_BUCKET}'
-      - 'S3_ENABLE_PATH_STYLE=1'
-      - 'S3_ACCESS_KEY=${MINIO_ROOT_USER}'
-      - 'S3_ACCESS_KEY_ID=${MINIO_ROOT_USER}'
-      - 'S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}'
-      - 'LLM_VISION_IMAGE_USE_BASE64=1'
-      - 'S3_SET_ACL=0'
-      - 'SEARXNG_URL=http://searxng:8080'
+      - "NEXT_AUTH_SSO_PROVIDERS=casdoor"
+      - "KEY_VAULTS_SECRET=Kix2wcUONd4CX51E/ZPAd36BqM4wzJgKjPtz2sGztqQ="
+      - "NEXT_AUTH_SECRET=NX2kaPE923dt6BL2U8e9oSre5RfoT7hg"
+      - "DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgresql:5432/${LOBE_DB_NAME}"
+      - "S3_BUCKET=${MINIO_LOBE_BUCKET}"
+      - "S3_ENABLE_PATH_STYLE=1"
+      - "S3_ACCESS_KEY=${MINIO_ROOT_USER}"
+      - "S3_ACCESS_KEY_ID=${MINIO_ROOT_USER}"
+      - "S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}"
+      - "LLM_VISION_IMAGE_USE_BASE64=1"
+      - "S3_SET_ACL=0"
+      - "SEARXNG_URL=http://searxng:8080"
     env_file:
       - .env
     restart: always
@@ -170,7 +170,7 @@ services:
       - otel
     image: grafana/grafana:12.2.0-17419259409
     container_name: lobe-grafana
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: always
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -190,39 +190,39 @@ services:
       - otel
     image: grafana/tempo:latest
     container_name: lobe-tempo
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: always
     volumes:
       - ./tempo/tempo.yaml:/etc/tempo.yaml
       - tempo_data:/var/tempo
-    command: ['-config.file=/etc/tempo.yaml']
+    command: ["-config.file=/etc/tempo.yaml"]
 
   prometheus:
     profiles:
       - otel
     image: prom/prometheus
     container_name: lobe-prometheus
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: always
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.enable-otlp-receiver'
-      - '--web.enable-remote-write-receiver'
-      - '--enable-feature=exemplar-storage'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-otlp-receiver"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=exemplar-storage"
 
   otel-collector:
     profiles:
       - otel
     image: otel/opentelemetry-collector
     container_name: lobe-otel-collector
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: always
     volumes:
       - ./otel-collector/collector-config.yaml:/etc/otelcol/config.yaml
-    command: ['--config', '/etc/otelcol/config.yaml']
+    command: ["--config", "/etc/otelcol/config.yaml"]
     depends_on:
       - tempo
       - prometheus
@@ -232,7 +232,7 @@ services:
       - otel-test
     image: ghcr.io/grafana/xk6-client-tracing:v0.0.9
     container_name: lobe-otel-tracing-test
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: always
     environment:
       - ENDPOINT=127.0.0.1:4317
@@ -248,7 +248,6 @@ volumes:
     driver: local
   prometheus_data:
     driver: local
-
 
 networks:
   lobe-network:

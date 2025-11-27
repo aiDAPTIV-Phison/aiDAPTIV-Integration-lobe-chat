@@ -13,6 +13,8 @@ import { ImportPgDataStructure } from '@/types/export';
 const getNonEmptyTables = (data: ImportPgDataStructure) => {
   const result: { count: number; name: string }[] = [];
 
+  if (!data || !data.data) return result;
+
   for (const [key, value] of Object.entries(data.data)) {
     if (Array.isArray(value) && value.length > 0) {
       result.push({

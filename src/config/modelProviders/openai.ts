@@ -15,7 +15,7 @@ const OpenAI: ModelProviderCard = {
   settings: {
     responseAnimation: 'smooth',
     showModelFetcher: true,
-    supportResponsesApi: true,
+    supportResponsesApi: false,
   },
   url: 'https://openai.com',
 };

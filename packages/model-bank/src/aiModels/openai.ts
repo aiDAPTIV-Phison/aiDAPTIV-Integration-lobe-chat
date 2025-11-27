@@ -21,6 +21,17 @@ export const openaiChatModels: AIChatModelCard[] = [
   {
     abilities: {
       functionCall: true,
+    },
+    contextWindowTokens: 128_000,
+    description: 'Meta Llama 3.1 8B Instruct (Q4_K_M)',
+    displayName: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M',
+    enabled: true,
+    id: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M',
+    type: 'chat',
+  },
+  {
+    abilities: {
+      functionCall: true,
       imageOutput: true,
       reasoning: true,
       search: true,
