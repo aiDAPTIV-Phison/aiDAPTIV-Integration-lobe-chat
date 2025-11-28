@@ -1,16 +1,8 @@
 @echo off
 setlocal
 
-:: Set environment variables for Demo Mode
-set "NEXT_PUBLIC_DEMO_MODE=true"
-set "DEMO_CONFIG_PATH=%~dp0LobeChat-Sir-Arthur-Conan-Doyle-session-v7.json"
-
-:: Navigate to the project root (parent directory of Example)
-cd /d "%~dp0.."
-
 echo ==========================================
-echo Starting LobeChat in Demo Mode
-echo Config Path: %DEMO_CONFIG_PATH%
+echo   LobeChat One-Click Start
 echo ==========================================
 
 :: Check if Docker is running
@@ -31,10 +23,20 @@ if %errorlevel% neq 0 (
 )
 
 :: Start Infrastructure Services
-echo Starting Infrastructure Services...
+echo Starting Infrastructure Services (PostgreSQL, MinIO, Casdoor, SearXNG)...
+cd /d "%~dp0"
 docker compose -f docker-compose\local\docker-compose.yml up -d postgresql minio casdoor searxng
 
-:: Start the development server
+if %errorlevel% neq 0 (
+    echo Failed to start services. Please check Docker status.
+    pause
+    exit /b 1
+)
+
+echo Services started.
+
+:: Start LobeChat Development Server
+echo Starting LobeChat...
 call pnpm run dev
 
 endlocal

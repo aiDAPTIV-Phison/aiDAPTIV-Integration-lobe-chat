@@ -67,22 +67,28 @@ The core feature of this integration is the **Automatic KV Cache Warming**. This
 
 We have provided a demo session file to showcase the capabilities.
 
-#### 1. Import the Demo Session
+#### 1. Start with Demo Mode (Recommended)
 
-1. In the LobeChat UI, go to the **Settings** or **Session List**.
-2. Look for the **Import** option.
-3. Select the file located at: `Example/LobeChat-Sir-Arthur-Conan-Doyle-session-v7.json`.
-4. You should now see a "Sherlock Holmes" agent in your session list.
+We have simplified the process with a one-click script that automatically sets up the environment and loads the character settings.
 
-#### 2. Triggering the KV Cache Build
+1. Navigate to the `Example` folder in the project directory.
+2. Double-click on **`Demo_start.bat`**.
+3. This script will:
+   - Start the development server.
+   - Automatically create a new chat session.
+   - Load the "Sherlock Holmes" character configuration (System Role & Opening Message).
+   - **Automatically trigger the KV Cache Warming** immediately upon creation.
 
-The aiDAPTIV+ technology works by pre-building the cache when you modify the agent's core settings.
+_(Alternatively, you can still manually import `Example/LobeChat-Sir-Arthur-Conan-Doyle-session-v7.json` via the UI if running in standard mode.)_
 
-1. Click on the **Sherlock Holmes** agent to open the chat.
-2. Click on the **Agent Settings** (usually a gear icon or the agent's avatar).
-3. Navigate to the **Prompt** tab (System Role settings).
-4. Make a small edit to the **System Role** text (e.g., add a space or change a word).
-5. **Wait for few seconds**.
+#### 2. Triggering the KV Cache Build (Manual)
+
+If you want to see the KV Cache build process in action manually (or if you modify the character):
+
+1. Click on the **Agent Settings** (usually a gear icon or the agent's avatar).
+2. Navigate to the **Prompt** tab (System Role settings).
+3. Make a small edit to the **System Role** text (e.g., add a space or change a word).
+4. **Wait for few seconds**.
    - The system automatically detects the change.
    - It sends a background request to the local AI model to "warm up" the KV Cache.
 
@@ -98,17 +104,25 @@ Once the cache is built:
 
 ## 4. Running the Application
 
-Once the installation is complete, you can start the application locally.
+Once the installation is complete, you have two options to start the application.
 
-1. Open a terminal in the project root directory.
-2. Run the development server:
+### Option A: Demo Mode (Recommended for Showcase)
 
-```powershell
-npm run dev
-```
+1. Go to the `Example` folder.
+2. Run `Demo_start.bat`.
+3. This script will:
+   - Check and start Docker Desktop if needed.
+   - Start necessary backend services (Database, etc.).
+   - Launch the application with the Sherlock Holmes character pre-loaded.
 
-3. Open your browser and navigate to:
-   > **<http://localhost:3010>**
+### Option B: Standard Development Mode
+
+1. Go to the project root directory.
+2. Run `Start_Dev.bat`.
+3. This script will:
+   - Check and start Docker Desktop if needed.
+   - Start necessary backend services.
+   - Launch the development server at **<http://localhost:3010>**.
 
 ---
 
