@@ -137,14 +137,17 @@ export const createSessionSlice: StateCreator<
     }
 
     // Warmup KV Cache
-    const { model, provider } = newSession.config;
+    const { model, provider, systemRole, params } = newSession.config;
     if (model) {
       import('@/services/chat').then(({ chatService }) => {
+        const messages = systemRole ? [{ content: systemRole, role: 'system' }] : [];
+
         void chatService
-          .createAssistantMessage({
-            messages: [],
+          .buildKVCache({
+            messages: messages as any,
             model,
             provider,
+            ...params,
           })
           .catch(() => {
             // ignore error

@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { isDesktop } from '@/const/version';
 import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
 
+import DemoInitializer from './DemoInitializer';
 import RegisterHotkeys from './RegisterHotkeys';
 import SessionPanel from './SessionPanel';
 import Workspace from './Workspace';
@@ -26,6 +27,7 @@ const Layout = () => {
 
       {/* ↑ cloud slot ↑ */}
       <RegisterHotkeys />
+      <DemoInitializer />
       {isDesktop && <ProtocolUrlHandler />}
     </>
   );

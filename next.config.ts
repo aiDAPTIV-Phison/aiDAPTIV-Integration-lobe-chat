@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     emotion: true,
   },
   compress: isProd,
+  distDir: process.env.APP_DIST_DIR || '.next',
   experimental: {
     optimizePackageImports: [
       'emoji-mart',
