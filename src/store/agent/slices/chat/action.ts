@@ -160,7 +160,7 @@ export const createChatSlice: StateCreator<
 
     await get().internal_updateAgentConfig(activeId, config, controller.signal);
 
-    // KV Cache Build
+    // Debounce KV Cache Build
     clearTimeout(get().kvCacheBuildTimeout);
     const timeout = setTimeout(async () => {
       const state = get();

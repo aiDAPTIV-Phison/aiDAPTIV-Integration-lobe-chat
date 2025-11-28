@@ -20,7 +20,6 @@ async function main() {
     console.log('Mock user inserted successfully.');
   } catch (error) {
     console.error('Error inserting mock user:', error);
-    throw error;
   }
 }
 
