@@ -4,7 +4,7 @@
 
 Welcome to the Phison LobeChat User Guide! This comprehensive guide will walk you through the installation, setup, and usage of Phison's integration with LobeChat.
 
-Phison LobeChat is an AI-powered coding assistant that leverages the innovative **aiDAPTIV+** KV Cache technology to provide lightning-fast responses to your questions. By building a knowledge cache of your chat context, it enables near-instantaneous answers and significantly enhances your experience.
+Phison LobeChat is an AI-powered roleplay interface that leverages the innovative **aiDAPTIV+** KV Cache technology to provide lightning-fast responses to your questions. By building a knowledge cache of your chat context, it enables near-instantaneous answers and significantly enhances your experience.
 
 This guide covers:
 
