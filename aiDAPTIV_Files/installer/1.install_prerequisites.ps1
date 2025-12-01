@@ -88,9 +88,9 @@ if (Get-Command "docker" -ErrorAction SilentlyContinue) {
     Write-Host "Docker not found. Installing..." -ForegroundColor Cyan
     $dockerInstaller = Get-ChildItem -Path $PSScriptRoot -Filter "Docker Desktop Installer.exe" | Select-Object -First 1
     if ($dockerInstaller) {
-        Write-Host "Installing Docker Desktop (This may take a while)..."
-        Start-Process -FilePath $dockerInstaller.FullName -ArgumentList "install --quiet --accept-license" -Wait
-        Write-Host "Docker Desktop installed." -ForegroundColor Green
+        Write-Host "Installing Docker Desktop..."
+        Start-Process -FilePath $dockerInstaller.FullName -ArgumentList "install --accept-license" -Wait
+        Write-Host "Docker Desktop installation finished." -ForegroundColor Green
         $needsRestart = $true
     } else {
         Write-Error "Docker installer (Docker Desktop Installer.exe) not found in $PSScriptRoot"
