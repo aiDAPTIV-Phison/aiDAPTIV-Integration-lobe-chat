@@ -89,9 +89,24 @@ if (Get-Command "docker" -ErrorAction SilentlyContinue) {
     $dockerInstaller = Get-ChildItem -Path $PSScriptRoot -Filter "Docker Desktop Installer.exe" | Select-Object -First 1
     if ($dockerInstaller) {
         Write-Host "Installing Docker Desktop..."
+
         Start-Process -FilePath $dockerInstaller.FullName -ArgumentList "install --accept-license" -Wait
         Write-Host "Docker Desktop installation finished." -ForegroundColor Green
         $needsRestart = $true
+
+        Write-Host "Configuring Docker to start on login..." -ForegroundColor Cyan
+        $DockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        if (Test-Path $DockerExe) {
+            try {
+                Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" `
+                                    -Name "Docker Desktop" `
+                                    -Value "`"$DockerExe`"" -ErrorAction Stop
+                Write-Host "Docker set to auto-start successfully." -ForegroundColor Green
+            } catch {
+                Write-Warning "Failed to set Docker auto-start registry key."
+            }
+        }
+        # ========================================================
     } else {
         Write-Error "Docker installer (Docker Desktop Installer.exe) not found in $PSScriptRoot"
     }

@@ -46,7 +46,9 @@ try {
 }
 
 Write-Host "Installing project dependencies (pnpm install)..."
-pnpm install
+pnpm add -D cross-env
+pnpm approve-builds
+## pnpm install
 
 Write-Host "`n[3/4] Configuring Environment..." -ForegroundColor Yellow
 $EnvFile = "$ProjectRoot\.env"
