@@ -98,6 +98,11 @@ for /f "tokens=*" %%i in ('docker ps -q --filter "name=alpine"') do (
     docker stop %%i
 )
 
+:: Run Database Migration
+echo Running database migration...
+timeout /t 5 /nobreak >nul
+call pnpm run db:migrate
+
 :: Start the development server
 call pnpm start
 

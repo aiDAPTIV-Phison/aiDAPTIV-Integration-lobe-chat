@@ -94,6 +94,11 @@ for /f "tokens=*" %%i in ('docker ps -q --filter "name=alpine"') do (
 
 echo Services started.
 
+:: Run Database Migration
+echo Running database migration...
+timeout /t 5 /nobreak >nul
+call pnpm run db:migrate
+
 :: Start LobeChat
 echo Starting LobeChat...
 call pnpm start
