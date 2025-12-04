@@ -54,7 +54,7 @@ if exist "!RELEASE_ZIP!" (
     if exist "node_modules" rmdir /s /q "node_modules"
 
     echo Extracting release.zip to project root...
-    tar -xvf "!RELEASE_ZIP!"
+    tar -xf "!RELEASE_ZIP!"
     if !errorlevel! equ 0 (
         echo Extraction complete.
     ) else (
