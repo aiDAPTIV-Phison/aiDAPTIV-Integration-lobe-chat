@@ -25,13 +25,15 @@ Write-Host "`n[1/4] Verifying Prerequisites..." -ForegroundColor Yellow
 try {
     $nodeVersion = node -v
     Write-Host "Node.js found: $nodeVersion" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Error "Node.js not found. Please run '1.install_prerequisites.ps1' first."
 }
 
 if (Get-Command "docker" -ErrorAction SilentlyContinue) {
     Write-Host "Docker found." -ForegroundColor Green
-} else {
+}
+else {
     Write-Error "Docker not found. Please run '1.install_prerequisites.ps1' first and RESTART your computer."
 }
 
@@ -41,7 +43,8 @@ Set-Location $ProjectRoot
 try {
     Write-Host "Installing pnpm..."
     npm install -g pnpm
-} catch {
+}
+catch {
     Write-Error "Failed to install pnpm. Ensure Node.js is in PATH."
 }
 
@@ -66,7 +69,8 @@ if (-not (Test-Path $EnvFile)) {
         
         if ($EnvContent -match "KEY_VAULTS_SECRET=") {
             $EnvContent = $EnvContent -replace "KEY_VAULTS_SECRET=.*", "KEY_VAULTS_SECRET=$KeyVaultsSecret"
-        } else {
+        }
+        else {
             $EnvContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
         }
         
@@ -81,13 +85,15 @@ if (-not (Test-Path $EnvFile)) {
 
         if ($EnvContent -match "LOBE_PORT=") {
             $EnvContent = $EnvContent -replace "LOBE_PORT=.*", "LOBE_PORT=3011"
-        } else {
+        }
+        else {
             $EnvContent += "LOBE_PORT=3011"
         }
 
         if ($EnvContent -match "APP_URL=") {
             $EnvContent = $EnvContent -replace "APP_URL=.*", "APP_URL=http://localhost:3010"
-        } else {
+        }
+        else {
             $EnvContent += "APP_URL=http://localhost:3010"
         }
         
@@ -101,10 +107,12 @@ if (-not (Test-Path $EnvFile)) {
 
         $EnvContent | Set-Content $EnvFile
         Write-Host ".env configured." -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Warning ".env.example.development not found. Skipping .env creation."
     }
-} else {
+}
+else {
     Write-Host ".env already exists. Skipping creation." -ForegroundColor Gray
 }
 
@@ -114,29 +122,34 @@ $DockerComposeFile = "$ProjectRoot\docker-compose\local\docker-compose.yml"
 try {
     docker info > $null 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Docker not running" }
-} catch {
+}
+catch {
     Write-Host "Docker daemon is not running. Attempting to start Docker Desktop..."
     $DockerPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
     if (Test-Path $DockerPath) {
         Start-Process $DockerPath
         Write-Host "Waiting for Docker to start..."
-        for ($i=0; $i -lt 60; $i++) {
+        for ($i = 0; $i -lt 60; $i++) {
             Start-Sleep -Seconds 2
             docker info > $null 2>&1
             if ($LASTEXITCODE -eq 0) { break }
             Write-Host "." -NoNewline
         }
         Write-Host ""
-    } else {
+    }
+    else {
         Write-Warning "Could not find Docker Desktop. Please start it manually."
     }
 }
+
 
 if (Test-Path $DockerComposeFile) {
     Write-Host "Starting database, minio, and auth services..."
     docker compose -f $DockerComposeFile up -d postgresql minio casdoor searxng
     Write-Host "Infrastructure started." -ForegroundColor Green
-} else {
+    pnpm run db:migrate
+}
+else {
     Write-Error "Docker Compose file not found at $DockerComposeFile"
 }
 
