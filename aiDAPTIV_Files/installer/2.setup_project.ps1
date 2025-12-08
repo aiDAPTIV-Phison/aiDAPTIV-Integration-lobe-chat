@@ -67,60 +67,119 @@ Write-Host "`n[3/4] Configuring Environment..." -ForegroundColor Yellow
 $EnvFile = "$ProjectRoot\.env"
 $EnvExample = "$ProjectRoot\.env.example.development"
 
+$NeedsKeyGeneration = $false
+$EnvContent = @()
+
 if (-not (Test-Path $EnvFile)) {
     if (Test-Path $EnvExample) {
         Copy-Item $EnvExample $EnvFile
         Write-Host "Created .env from .env.example.development" -ForegroundColor Green
-        
-        Write-Host "Generating secure keys..."
-        $KeyVaultsSecret = node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-        
-        $EnvContent = Get-Content $EnvFile
-        
-        if ($EnvContent -match "KEY_VAULTS_SECRET=") {
-            $EnvContent = $EnvContent -replace "KEY_VAULTS_SECRET=.*", "KEY_VAULTS_SECRET=$KeyVaultsSecret"
-        }
-        else {
-            $EnvContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
-        }
-        
-        if ($EnvContent -notmatch "ENABLE_MOCK_DEV_USER=") {
-            $EnvContent += "ENABLE_MOCK_DEV_USER=1"
-            $EnvContent += "MOCK_DEV_USER_ID=user_123"
-        }
-
-        if ($EnvContent -notmatch "OPENAI_PROXY_URL=") {
-            $EnvContent += "OPENAI_PROXY_URL=http://127.0.0.1:13141/v1"
-        }
-
-        if ($EnvContent -match "LOBE_PORT=") {
-            $EnvContent = $EnvContent -replace "LOBE_PORT=.*", "LOBE_PORT=3011"
-        }
-        else {
-            $EnvContent += "LOBE_PORT=3011"
-        }
-
-        if ($EnvContent -match "APP_URL=") {
-            $EnvContent = $EnvContent -replace "APP_URL=.*", "APP_URL=http://localhost:3010"
-        }
-        else {
-            $EnvContent += "APP_URL=http://localhost:3010"
-        }
-        
-        if ($EnvContent -notmatch "S3_ACCESS_KEY_ID=") {
-            $EnvContent += "S3_ACCESS_KEY_ID=minio"
-            $EnvContent += "S3_SECRET_ACCESS_KEY=minio123"
-            $EnvContent += "S3_ENDPOINT=http://localhost:9000"
-            $EnvContent += "S3_BUCKET=lobe"
-            $EnvContent += "S3_ENABLE_PATH_STYLE=1"
-        }
-
-        $EnvContent | Set-Content $EnvFile
-        Write-Host ".env configured." -ForegroundColor Green
     }
     else {
-        Write-Warning ".env.example.development not found. Skipping .env creation."
+        # Create empty .env file if example doesn't exist
+        New-Item -Path $EnvFile -ItemType File -Force | Out-Null
     }
+    $NeedsKeyGeneration = $true
+}
+
+# Load .env content
+if (Test-Path $EnvFile) {
+    $EnvContent = Get-Content $EnvFile
+    if ($null -eq $EnvContent) {
+        $EnvContent = @()
+    }
+    
+    # Check if KEY_VAULTS_SECRET exists and is not empty
+    $HasValidSecret = $false
+    foreach ($line in $EnvContent) {
+        if ($line -match "^KEY_VAULTS_SECRET\s*=\s*.+") {
+            $HasValidSecret = $true
+            break
+        }
+    }
+    
+    if (-not $HasValidSecret) {
+        Write-Host "KEY_VAULTS_SECRET is missing or empty, will generate a new one" -ForegroundColor Yellow
+        $NeedsKeyGeneration = $true
+    }
+}
+
+if ($NeedsKeyGeneration) {
+    Write-Host "Generating secure keys..."
+    $KeyVaultsSecret = node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+    
+    # Update or add KEY_VAULTS_SECRET
+    $Found = $false
+    $NewContent = @()
+    foreach ($line in $EnvContent) {
+        if ($line -match "^KEY_VAULTS_SECRET\s*=") {
+            $NewContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
+            $Found = $true
+        }
+        else {
+            $NewContent += $line
+        }
+    }
+    
+    if (-not $Found) {
+        $NewContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
+    }
+    
+    $EnvContent = $NewContent
+}
+
+# Configure other environment variables
+$EnvContentArray = $EnvContent -join "`n"
+
+if ($EnvContentArray -notmatch "ENABLE_MOCK_DEV_USER=") {
+    $EnvContent += "ENABLE_MOCK_DEV_USER=1"
+    $EnvContent += "MOCK_DEV_USER_ID=user_123"
+}
+
+if ($EnvContentArray -notmatch "OPENAI_PROXY_URL=") {
+    $EnvContent += "OPENAI_PROXY_URL=http://127.0.0.1:13141/v1"
+}
+
+if ($EnvContentArray -match "LOBE_PORT=") {
+    $EnvContent = $EnvContent | ForEach-Object {
+        if ($_ -match "^LOBE_PORT=") {
+            "LOBE_PORT=3011"
+        }
+        else {
+            $_
+        }
+    }
+}
+else {
+    $EnvContent += "LOBE_PORT=3011"
+}
+
+if ($EnvContentArray -match "APP_URL=") {
+    $EnvContent = $EnvContent | ForEach-Object {
+        if ($_ -match "^APP_URL=") {
+            "APP_URL=http://localhost:3010"
+        }
+        else {
+            $_
+        }
+    }
+}
+else {
+    $EnvContent += "APP_URL=http://localhost:3010"
+}
+
+if ($EnvContentArray -notmatch "S3_ACCESS_KEY_ID=") {
+    $EnvContent += "S3_ACCESS_KEY_ID=minio"
+    $EnvContent += "S3_SECRET_ACCESS_KEY=minio123"
+    $EnvContent += "S3_ENDPOINT=http://localhost:9000"
+    $EnvContent += "S3_BUCKET=lobe"
+    $EnvContent += "S3_ENABLE_PATH_STYLE=1"
+}
+
+$EnvContent | Set-Content $EnvFile
+Write-Host ".env configured." -ForegroundColor Green
+Write-Warning ".env.example.development not found. Skipping .env creation."
+}
 }
 else {
     Write-Host ".env already exists. Skipping creation." -ForegroundColor Gray

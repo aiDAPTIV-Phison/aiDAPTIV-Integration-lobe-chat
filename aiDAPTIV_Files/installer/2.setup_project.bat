@@ -112,27 +112,14 @@ echo [3/4] Configuring Environment...
 set "ENV_FILE=%PROJECT_ROOT%\.env"
 set "ENV_EXAMPLE=%PROJECT_ROOT%\.env.example.development"
 
-if not exist "%ENV_FILE%" (
-    if exist "%ENV_EXAMPLE%" (
-        echo Created .env from .env.example.development
-        copy "%ENV_EXAMPLE%" "%ENV_FILE%" >nul
-        
-        echo Generating secure keys...
-        for /f "tokens=*" %%k in ('node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"') do set "KEY_VAULTS_SECRET=%%k"
-        
-        echo Configuring .env file...
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "$keySecret = '%KEY_VAULTS_SECRET%'; $content = Get-Content '%ENV_FILE%' -Raw; $content = $content -replace 'KEY_VAULTS_SECRET=.*', (\"KEY_VAULTS_SECRET=\" + $keySecret); if ($content -notmatch 'KEY_VAULTS_SECRET=') { $content += \"`nKEY_VAULTS_SECRET=\" + $keySecret }; if ($content -notmatch 'ENABLE_MOCK_DEV_USER=') { $content += \"`nENABLE_MOCK_DEV_USER=1`nMOCK_DEV_USER_ID=user_123\" }; if ($content -notmatch 'OPENAI_PROXY_URL=') { $content += \"`nOPENAI_PROXY_URL=http://127.0.0.1:13141/v1\" }; $content = $content -replace 'LOBE_PORT=.*', 'LOBE_PORT=3011'; if ($content -notmatch 'LOBE_PORT=') { $content += \"`nLOBE_PORT=3011\" }; $content = $content -replace 'APP_URL=.*', 'APP_URL=http://localhost:3010'; if ($content -notmatch 'APP_URL=') { $content += \"`nAPP_URL=http://localhost:3010\" }; if ($content -notmatch 'S3_ACCESS_KEY_ID=') { $content += \"`nS3_ACCESS_KEY_ID=minio`nS3_SECRET_ACCESS_KEY=minio123`nS3_ENDPOINT=http://localhost:9000`nS3_BUCKET=lobe`nS3_ENABLE_PATH_STYLE=1\" }; Set-Content '%ENV_FILE%' -Value $content -NoNewline"
-        
-        if %errorlevel% equ 0 (
-            echo .env configured.
-        ) else (
-            echo [WARNING] Failed to configure .env file. You may need to configure it manually.
-        )
-    ) else (
-        echo [WARNING] .env.example.development not found. Skipping .env creation.
-    )
+:: Use PowerShell script block for comprehensive .env configuration
+echo Configuring .env file...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $envFile = '%ENV_FILE%'; $envExample = '%ENV_EXAMPLE%'; $needsKeyGeneration = $false; $content = ''; if (Test-Path $envFile) { $content = Get-Content $envFile -Raw; if ($null -eq $content) { $content = '' }; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $hasValidSecret = $false; foreach ($line in $contentLines) { if ($line -match '^KEY_VAULTS_SECRET\s*=\s*.+') { $hasValidSecret = $true; break } }; if (-not $hasValidSecret) { Write-Host 'KEY_VAULTS_SECRET is missing or empty, will generate a new one' -ForegroundColor Yellow; $needsKeyGeneration = $true } } else { if (Test-Path $envExample) { Copy-Item $envExample $envFile; Write-Host 'Created .env from .env.example.development' -ForegroundColor Green; $content = Get-Content $envFile -Raw } else { New-Item -Path $envFile -ItemType File -Force | Out-Null; $content = '' }; $needsKeyGeneration = $true }; if ($needsKeyGeneration) { Write-Host 'Generating secure keys...' -ForegroundColor Yellow; $keySecret = node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $found = $false; $newContent = @(); foreach ($line in $contentLines) { if ($line -match '^KEY_VAULTS_SECRET\s*=') { $newContent += \"KEY_VAULTS_SECRET=$keySecret\"; $found = $true } else { $newContent += $line } }; if (-not $found) { $newContent += \"KEY_VAULTS_SECRET=$keySecret\" }; $content = $newContent -join \"`r`n\" } else { $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $newContent = @(); foreach ($line in $contentLines) { $newContent += $line }; $content = $newContent -join \"`r`n\" }; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; if ($content -notmatch 'ENABLE_MOCK_DEV_USER=') { $contentLines += 'ENABLE_MOCK_DEV_USER=1'; $contentLines += 'MOCK_DEV_USER_ID=user_123' }; if ($content -notmatch 'OPENAI_PROXY_URL=') { $contentLines += 'OPENAI_PROXY_URL=http://127.0.0.1:13141/v1' }; $contentLines = $contentLines | ForEach-Object { if ($_ -match '^LOBE_PORT=') { 'LOBE_PORT=3011' } else { $_ } }; if ($content -notmatch 'LOBE_PORT=') { $contentLines += 'LOBE_PORT=3011' }; $contentLines = $contentLines | ForEach-Object { if ($_ -match '^APP_URL=') { 'APP_URL=http://localhost:3010' } else { $_ } }; if ($content -notmatch 'APP_URL=') { $contentLines += 'APP_URL=http://localhost:3010' }; if ($content -notmatch 'S3_ACCESS_KEY_ID=') { $contentLines += 'S3_ACCESS_KEY_ID=minio'; $contentLines += 'S3_SECRET_ACCESS_KEY=minio123'; $contentLines += 'S3_ENDPOINT=http://localhost:9000'; $contentLines += 'S3_BUCKET=lobe'; $contentLines += 'S3_ENABLE_PATH_STYLE=1' }; Set-Content $envFile -Value ($contentLines -join \"`r`n\") -NoNewline; Write-Host '.env configured.' -ForegroundColor Green }"
+
+if %errorlevel% equ 0 (
+    echo Environment configuration complete.
 ) else (
-    echo .env already exists. Skipping creation.
+    echo [WARNING] Failed to configure .env file. You may need to configure it manually.
 )
 
 echo.
