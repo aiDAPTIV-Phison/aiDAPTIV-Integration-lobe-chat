@@ -126,6 +126,38 @@ else {
     Write-Host ".env already exists. Skipping creation." -ForegroundColor Gray
 }
 
+# Check docker-compose/local/.env
+$DockerComposeEnvFile = "$ProjectRoot\docker-compose\local\.env"
+$DockerComposeEnvDir = "$ProjectRoot\docker-compose\local"
+
+if (-not (Test-Path $DockerComposeEnvFile)) {
+    # Ensure directory exists
+    if (-not (Test-Path $DockerComposeEnvDir)) {
+        New-Item -ItemType Directory -Path $DockerComposeEnvDir -Force | Out-Null
+    }
+    
+    Write-Host "Creating docker-compose/local/.env..." -ForegroundColor Yellow
+    $DockerComposeEnvContent = @"
+MINIO_PORT=9000
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio123
+MINIO_LOBE_BUCKET=lobe
+CASDOOR_PORT=8000
+LOBE_PORT=3210
+LOBE_DB_NAME=lobechat
+POSTGRES_PASSWORD=password
+AUTH_CASDOOR_ISSUER=http://localhost:8000
+S3_ENDPOINT=http://localhost:9000
+LOBE_PID=1
+MINIO_PID=1
+"@
+    $DockerComposeEnvContent | Set-Content $DockerComposeEnvFile -Encoding UTF8
+    Write-Host "docker-compose/local/.env created." -ForegroundColor Green
+}
+else {
+    Write-Host "docker-compose/local/.env already exists. Skipping creation." -ForegroundColor Gray
+}
+
 Write-Host "`n[4/4] Starting Local Infrastructure..." -ForegroundColor Yellow
 $DockerComposeFile = "$ProjectRoot\docker-compose\local\docker-compose.yml"
 

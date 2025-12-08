@@ -121,19 +121,7 @@ if not exist "%ENV_FILE%" (
         for /f "tokens=*" %%k in ('node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"') do set "KEY_VAULTS_SECRET=%%k"
         
         echo Configuring .env file...
-        powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-            "$keySecret = '!KEY_VAULTS_SECRET!'; ^
-            $content = Get-Content '%ENV_FILE%' -Raw; ^
-            $content = $content -replace 'KEY_VAULTS_SECRET=.*', (\"KEY_VAULTS_SECRET=\" + $keySecret); ^
-            if ($content -notmatch 'KEY_VAULTS_SECRET=') { $content += \"`nKEY_VAULTS_SECRET=\" + $keySecret }; ^
-            if ($content -notmatch 'ENABLE_MOCK_DEV_USER=') { $content += \"`nENABLE_MOCK_DEV_USER=1`nMOCK_DEV_USER_ID=user_123\" }; ^
-            if ($content -notmatch 'OPENAI_PROXY_URL=') { $content += \"`nOPENAI_PROXY_URL=http://127.0.0.1:13141/v1\" }; ^
-            $content = $content -replace 'LOBE_PORT=.*', 'LOBE_PORT=3011'; ^
-            if ($content -notmatch 'LOBE_PORT=') { $content += \"`nLOBE_PORT=3011\" }; ^
-            $content = $content -replace 'APP_URL=.*', 'APP_URL=http://localhost:3010'; ^
-            if ($content -notmatch 'APP_URL=') { $content += \"`nAPP_URL=http://localhost:3010\" }; ^
-            if ($content -notmatch 'S3_ACCESS_KEY_ID=') { $content += \"`nS3_ACCESS_KEY_ID=minio`nS3_SECRET_ACCESS_KEY=minio123`nS3_ENDPOINT=http://localhost:9000`nS3_BUCKET=lobe`nS3_ENABLE_PATH_STYLE=1\" }; ^
-            Set-Content '%ENV_FILE%' -Value $content -NoNewline"
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$keySecret = '%KEY_VAULTS_SECRET%'; $content = Get-Content '%ENV_FILE%' -Raw; $content = $content -replace 'KEY_VAULTS_SECRET=.*', (\"KEY_VAULTS_SECRET=\" + $keySecret); if ($content -notmatch 'KEY_VAULTS_SECRET=') { $content += \"`nKEY_VAULTS_SECRET=\" + $keySecret }; if ($content -notmatch 'ENABLE_MOCK_DEV_USER=') { $content += \"`nENABLE_MOCK_DEV_USER=1`nMOCK_DEV_USER_ID=user_123\" }; if ($content -notmatch 'OPENAI_PROXY_URL=') { $content += \"`nOPENAI_PROXY_URL=http://127.0.0.1:13141/v1\" }; $content = $content -replace 'LOBE_PORT=.*', 'LOBE_PORT=3011'; if ($content -notmatch 'LOBE_PORT=') { $content += \"`nLOBE_PORT=3011\" }; $content = $content -replace 'APP_URL=.*', 'APP_URL=http://localhost:3010'; if ($content -notmatch 'APP_URL=') { $content += \"`nAPP_URL=http://localhost:3010\" }; if ($content -notmatch 'S3_ACCESS_KEY_ID=') { $content += \"`nS3_ACCESS_KEY_ID=minio`nS3_SECRET_ACCESS_KEY=minio123`nS3_ENDPOINT=http://localhost:9000`nS3_BUCKET=lobe`nS3_ENABLE_PATH_STYLE=1\" }; Set-Content '%ENV_FILE%' -Value $content -NoNewline"
         
         if %errorlevel% equ 0 (
             echo .env configured.
@@ -145,6 +133,39 @@ if not exist "%ENV_FILE%" (
     )
 ) else (
     echo .env already exists. Skipping creation.
+)
+
+echo.
+echo Checking docker-compose/local/.env...
+set "DOCKER_COMPOSE_ENV_FILE=%PROJECT_ROOT%\docker-compose\local\.env"
+set "DOCKER_COMPOSE_ENV_DIR=%PROJECT_ROOT%\docker-compose\local"
+
+if not exist "%DOCKER_COMPOSE_ENV_FILE%" (
+    if not exist "%DOCKER_COMPOSE_ENV_DIR%" (
+        mkdir "%DOCKER_COMPOSE_ENV_DIR%"
+    )
+    echo Creating docker-compose/local/.env...
+    (
+        echo MINIO_PORT=9000
+        echo MINIO_ROOT_USER=minio
+        echo MINIO_ROOT_PASSWORD=minio123
+        echo MINIO_LOBE_BUCKET=lobe
+        echo CASDOOR_PORT=8000
+        echo LOBE_PORT=3210
+        echo LOBE_DB_NAME=lobechat
+        echo POSTGRES_PASSWORD=password
+        echo AUTH_CASDOOR_ISSUER=http://localhost:8000
+        echo S3_ENDPOINT=http://localhost:9000
+        echo LOBE_PID=1
+        echo MINIO_PID=1
+    ) > "%DOCKER_COMPOSE_ENV_FILE%"
+    if %errorlevel% equ 0 (
+        echo docker-compose/local/.env created.
+    ) else (
+        echo [WARNING] Failed to create docker-compose/local/.env file.
+    )
+) else (
+    echo docker-compose/local/.env already exists. Skipping creation.
 )
 
 echo.
