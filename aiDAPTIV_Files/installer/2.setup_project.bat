@@ -24,7 +24,9 @@ echo   Logs will be saved to: %LOG_FILE%
 echo ==========================================
 
 :: Re-run this script with "__LOG__" argument and use PowerShell to tee output
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~f0' __LOG__ 2>&1 | Tee-Object -FilePath '%LOG_FILE%'; exit $LASTEXITCODE"
+:: Progress indicators are handled separately, so we just need to log normal output
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~f0' '__LOG__' 2>&1 | Tee-Object -FilePath '%LOG_FILE%'; exit $LASTEXITCODE"
+
 set "EXIT_CODE=%errorlevel%"
 
 if %EXIT_CODE% neq 0 (
@@ -43,6 +45,8 @@ exit /b %EXIT_CODE%
 :: ---------------------------------------------------------
 :: 3. Main Setup Logic
 :: ---------------------------------------------------------
+:: Set log file path for progress indicators
+if not defined LOG_FILE set "LOG_FILE=%~dp0setup_log.txt"
 
 echo ==========================================
 echo   Step 2: Project Setup ^& Start
@@ -159,14 +163,16 @@ if %errorlevel% neq 0 (
         timeout /t 2 /nobreak >nul
         docker info >nul 2>&1
         if %errorlevel% equ 0 (
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "[System.IO.File]::AppendAllText('!LOG_FILE!', \"`r`n\", [System.Text.Encoding]::UTF8)"
             echo Docker started successfully.
             goto :DOCKER_READY
         )
         set /a "WAIT_COUNT+=1"
         if !WAIT_COUNT! lss 60 (
-            echo|set /p="."
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Host '.' -NoNewline; [System.IO.File]::AppendAllText('!LOG_FILE!', '.', [System.Text.Encoding]::UTF8)"
             goto :WAIT_DOCKER
         )
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[System.IO.File]::AppendAllText('!LOG_FILE!', \"`r`n\", [System.Text.Encoding]::UTF8)"
         echo.
         echo [WARNING] Docker did not start within timeout. Please start it manually.
         popd
