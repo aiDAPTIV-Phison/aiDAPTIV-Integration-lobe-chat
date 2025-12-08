@@ -1,3 +1,5 @@
+import { UserJSON } from '@clerk/backend';
+import { enableClerk, isDesktop } from '@lobechat/const';
 import {
   AiSendMessageServerSchema,
   SendMessageServerResponse,
@@ -9,17 +11,72 @@ import debug from 'debug';
 import { LOADING_FLAT } from '@/const/message';
 import { MessageModel } from '@/database/models/message';
 import { TopicModel } from '@/database/models/topic';
+import { UserModel, UserNotFoundError } from '@/database/models/user';
+import { ClerkAuth } from '@/libs/clerk-auth';
+import { pino } from '@/libs/logger';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { AiChatService } from '@/server/services/aiChat';
 import { FileService } from '@/server/services/file';
+import { UserService } from '@/server/services/user';
 import { getXorPayload } from '@/utils/server';
 
 const log = debug('lobe-lambda-router:ai-chat');
 
 const aiChatProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+
+  // Ensure user exists before proceeding
+  // This prevents foreign key constraint violations when creating topics/messages
+  try {
+    const userModel = new UserModel(ctx.serverDB, ctx.userId);
+    await userModel.getUserState(async () => ({}));
+  } catch (error) {
+    // User not found, try to create it
+    if (error instanceof UserNotFoundError) {
+      // If in clerk auth mode
+      if (enableClerk) {
+        const clerkAuth = new ClerkAuth();
+        const user = await clerkAuth.getCurrentUser();
+        if (user) {
+          const userService = new UserService(ctx.serverDB);
+          await userService.createUser(user.id, {
+            created_at: user.createdAt,
+            email_addresses: user.emailAddresses.map((e) => ({
+              email_address: e.emailAddress,
+              id: e.id,
+            })),
+            first_name: user.firstName,
+            id: user.id,
+            image_url: user.imageUrl,
+            last_name: user.lastName,
+            phone_numbers: user.phoneNumbers.map((e) => ({
+              id: e.id,
+              phone_number: e.phoneNumber,
+            })),
+            primary_email_address_id: user.primaryEmailAddressId,
+            primary_phone_number_id: user.primaryPhoneNumberId,
+            username: user.username,
+          } as UserJSON);
+          pino.info('created clerk user in aiChatProcedure');
+        }
+      }
+      // If in desktop mode, make sure desktop user exist
+      else if (isDesktop) {
+        await UserModel.makeSureUserExist(ctx.serverDB, ctx.userId);
+        pino.info('created desktop user in aiChatProcedure');
+      }
+      // For other cases (e.g., OIDC, NextAuth), ensure user exists with minimal data
+      else {
+        await UserModel.makeSureUserExist(ctx.serverDB, ctx.userId);
+        pino.info(`created user in aiChatProcedure for userId: ${ctx.userId}`);
+      }
+    } else {
+      // Re-throw if it's a different error
+      throw error;
+    }
+  }
 
   return opts.next({
     ctx: {

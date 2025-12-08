@@ -49,9 +49,19 @@ catch {
 }
 
 Write-Host "Installing project dependencies (pnpm install)..."
-pnpm add -D cross-env
-pnpm approve-builds
-## pnpm install
+# pnpm add -D cross-env
+# pnpm approve-builds
+
+# Cange to root 
+pnpm config set store-dir R:\.pnpm-store
+pnpm config set package-import-method copy
+pnpm -w install --prefer-offline
+pnpm add @aws-sdk/client-bedrock-runtime
+pnpm add comlink
+pnpm add dompurify
+pnpm add request-filtering-agent
+pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl 
+
 
 Write-Host "`n[3/4] Configuring Environment..." -ForegroundColor Yellow
 $EnvFile = "$ProjectRoot\.env"

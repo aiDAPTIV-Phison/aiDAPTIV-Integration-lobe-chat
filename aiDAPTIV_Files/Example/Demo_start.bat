@@ -91,13 +91,6 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Stop alpine container if running
-echo Checking for alpine container...
-for /f "tokens=*" %%i in ('docker ps -q --filter "name=alpine"') do (
-    echo Stopping alpine container %%i...
-    docker stop %%i
-)
-
 :: Run Database Migration
 echo Running database migration...
 timeout /t 5 /nobreak >nul
