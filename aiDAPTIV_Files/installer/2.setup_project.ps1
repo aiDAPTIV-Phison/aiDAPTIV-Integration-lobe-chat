@@ -60,7 +60,7 @@ pnpm add @aws-sdk/client-bedrock-runtime
 pnpm add comlink
 pnpm add dompurify
 pnpm add request-filtering-agent
-pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl 
+pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl @opentelemetry/auto-instrumentations-node @opentelemetry/auto-instrumentations-node
 
 
 Write-Host "`n[3/4] Configuring Environment..." -ForegroundColor Yellow

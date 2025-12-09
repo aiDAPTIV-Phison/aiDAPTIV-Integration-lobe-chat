@@ -92,8 +92,8 @@ echo Running database migration...
 timeout /t 5 /nobreak >nul
 call pnpm run db:migrate
 
-:: Start LobeChat
-echo Starting LobeChat...
-call pnpm start
+:: Start LobeChat in development mode
+echo Starting LobeChat in development mode...
+call pnpm run dev
 
 endlocal

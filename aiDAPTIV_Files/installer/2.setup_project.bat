@@ -102,7 +102,7 @@ call pnpm add @aws-sdk/client-bedrock-runtime
 call pnpm add comlink
 call pnpm add dompurify
 call pnpm add request-filtering-agent
-call pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl
+call pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl @opentelemetry/auto-instrumentations-node @opentelemetry/auto-instrumentations-node
 if %errorlevel% neq 0 (
     echo [WARNING] Some packages may have failed to install. Continuing...
 )
@@ -217,7 +217,14 @@ if exist "%DOCKER_COMPOSE_FILE%" (
 echo.
 echo ==========================================
 echo Setup complete.
-echo You can now run 'Start_Dev.bat' or 'Demo_start.bat'.
+echo.
+echo You can now run:
+echo   - 'Start_Dev.bat' (development mode, no build required)
+echo   - 'Demo_start.bat' (Demo mode, no build required)
+echo.
+echo Note: If you want to run in production mode, you need to build first:
+echo   pnpm run build
+echo   Then use 'Start_Prod_Dist.bat' or 'Start_Demo_Dist.bat'
 echo ==========================================
 
 popd
