@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ChatGroupModel } from '@/database/models/chatGroup';
 import { SessionModel } from '@/database/models/session';
 import { SessionGroupModel } from '@/database/models/sessionGroup';
+import { UserModel } from '@/database/models/user';
 import { insertAgentSchema, insertSessionSchema } from '@/database/schemas';
 import { getServerDB } from '@/database/server';
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
@@ -14,6 +15,9 @@ import { ChatSessionList, LobeGroupSession } from '@/types/session';
 
 const sessionProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+
+  // 確保 user 已存在，避免後續插入 agents 觸發外鍵錯誤
+  await UserModel.makeSureUserExist(ctx.serverDB, ctx.userId);
 
   return opts.next({
     ctx: {

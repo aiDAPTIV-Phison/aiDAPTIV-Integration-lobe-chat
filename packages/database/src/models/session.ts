@@ -247,41 +247,84 @@ export class SessionModel {
     slug?: string;
     type: 'agent' | 'group';
   }): Promise<SessionItem> => {
-    return this.db.transaction(async (trx) => {
-      if (slug) {
-        const existResult = await trx.query.sessions.findFirst({
-          where: and(eq(sessions.slug, slug), eq(sessions.userId, this.userId)),
-        });
+    try {
+      return await this.db.transaction(async (trx) => {
+        if (slug) {
+          const existResult = await trx.query.sessions.findFirst({
+            where: and(eq(sessions.slug, slug), eq(sessions.userId, this.userId)),
+          });
 
-        if (existResult) return existResult;
-      }
+          if (existResult) return existResult;
+        }
 
-      // Extract and properly map fields for agent creation from DiscoverAssistantDetail
-      const {
-        // MetaData fields (from discover assistant)
-        title,
-        description,
-        tags = [],
-        avatar,
-        backgroundColor,
-        // LobeAgentConfig fields
-        model,
-        params,
-        systemRole,
-        provider,
-        plugins = [],
-        openingMessage,
-        openingQuestions = [],
-        // TTS config
-        tts,
-        // Chat config
-        chatConfig,
-        // Field name mapping
-        examples, // maps to fewShots
-        identifier, // maps to marketIdentifier
-        marketIdentifier,
-      } = config as any;
-      if (type === 'group') {
+        // Extract and properly map fields for agent creation from DiscoverAssistantDetail
+        const {
+          // MetaData fields (from discover assistant)
+          title,
+          description,
+          tags = [],
+          avatar,
+          backgroundColor,
+          // LobeAgentConfig fields
+          model,
+          params,
+          systemRole,
+          provider,
+          plugins = [],
+          openingMessage,
+          openingQuestions = [],
+          // TTS config
+          tts,
+          // Chat config
+          chatConfig,
+          // Field name mapping
+          examples, // maps to fewShots
+          identifier, // maps to marketIdentifier
+          marketIdentifier,
+        } = config as any;
+        if (type === 'group') {
+          const result = await trx
+            .insert(sessions)
+            .values({
+              ...session,
+              createdAt: new Date(),
+              id,
+              slug,
+              type,
+              updatedAt: new Date(),
+              userId: this.userId,
+            })
+            .returning();
+
+          return result[0];
+        }
+
+        const newAgents = await trx
+          .insert(agents)
+          .values({
+            avatar,
+            backgroundColor,
+            chatConfig: chatConfig || {},
+            createdAt: new Date(),
+            description,
+            fewShots: examples || null, // Map examples to fewShots field
+            id: idGenerator('agents'),
+            marketIdentifier: identifier || marketIdentifier,
+            model: typeof model === 'string' ? model : null,
+            openingMessage,
+            openingQuestions,
+            params: params || {},
+            plugins,
+            provider,
+            systemRole,
+            tags,
+            title,
+            tts: tts || {},
+            updatedAt: new Date(),
+            userId: this.userId,
+          })
+          .returning();
+
         const result = await trx
           .insert(sessions)
           .values({
@@ -295,56 +338,24 @@ export class SessionModel {
           })
           .returning();
 
+        await trx.insert(agentsToSessions).values({
+          agentId: newAgents[0].id,
+          sessionId: id,
+          userId: this.userId,
+        });
+
         return result[0];
-      }
-
-      const newAgents = await trx
-        .insert(agents)
-        .values({
-          avatar,
-          backgroundColor,
-          chatConfig: chatConfig || {},
-          createdAt: new Date(),
-          description,
-          fewShots: examples || null, // Map examples to fewShots field
-          id: idGenerator('agents'),
-          marketIdentifier: identifier || marketIdentifier,
-          model: typeof model === 'string' ? model : null,
-          openingMessage,
-          openingQuestions,
-          params: params || {},
-          plugins,
-          provider,
-          systemRole,
-          tags,
-          title,
-          tts: tts || {},
-          updatedAt: new Date(),
-          userId: this.userId,
-        })
-        .returning();
-
-      const result = await trx
-        .insert(sessions)
-        .values({
-          ...session,
-          createdAt: new Date(),
-          id,
-          slug,
-          type,
-          updatedAt: new Date(),
-          userId: this.userId,
-        })
-        .returning();
-
-      await trx.insert(agentsToSessions).values({
-        agentId: newAgents[0].id,
-        sessionId: id,
-        userId: this.userId,
       });
-
-      return result[0];
-    });
+    } catch (error: any) {
+      // 若 slug 唯一鍵併發衝突，返回已存在的 session，保持冪等
+      if (error?.code === '23505' && slug) {
+        const existResult = await this.db.query.sessions.findFirst({
+          where: and(eq(sessions.slug, slug), eq(sessions.userId, this.userId)),
+        });
+        if (existResult) return existResult;
+      }
+      throw error;
+    }
   };
 
   createInbox = async (defaultAgentConfig: PartialDeep<LobeAgentConfig>) => {
@@ -354,11 +365,21 @@ export class SessionModel {
 
     if (item) return;
 
-    return await this.create({
-      config: merge(DEFAULT_AGENT_CONFIG, defaultAgentConfig),
-      slug: INBOX_SESSION_ID,
-      type: 'agent',
-    });
+    try {
+      return await this.create({
+        config: merge(DEFAULT_AGENT_CONFIG, defaultAgentConfig),
+        slug: INBOX_SESSION_ID,
+        type: 'agent',
+      });
+    } catch (error: any) {
+      // 若在併發情況下已被其它請求創建，忽略唯一鍵衝突並返回現有 inbox
+      if (error?.code === '23505') {
+        return this.db.query.sessions.findFirst({
+          where: and(eq(sessions.userId, this.userId), eq(sessions.slug, INBOX_SESSION_ID)),
+        });
+      }
+      throw error;
+    }
   };
 
   batchCreate = async (newSessions: NewSession[]) => {
