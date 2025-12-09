@@ -78,6 +78,7 @@ if (-not (Test-Path $EnvFile)) {
     else {
         # Create empty .env file if example doesn't exist
         New-Item -Path $EnvFile -ItemType File -Force | Out-Null
+        Write-Warning ".env.example.development not found. Created empty .env."
     }
     $NeedsKeyGeneration = $true
 }
@@ -178,12 +179,6 @@ if ($EnvContentArray -notmatch "S3_ACCESS_KEY_ID=") {
 
 $EnvContent | Set-Content $EnvFile
 Write-Host ".env configured." -ForegroundColor Green
-Write-Warning ".env.example.development not found. Skipping .env creation."
-}
-}
-else {
-    Write-Host ".env already exists. Skipping creation." -ForegroundColor Gray
-}
 
 # Check docker-compose/local/.env
 $DockerComposeEnvFile = "$ProjectRoot\docker-compose\local\.env"
