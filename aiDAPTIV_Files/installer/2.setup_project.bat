@@ -111,34 +111,32 @@ if %errorlevel% neq 0 (
 echo.
 echo [3/4] Configuring Environment...
 set "ENV_FILE=%PROJECT_ROOT%\.env"
-
 echo Configuring .env file...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "@'
-OPENAI_PROXY_URL=http://127.0.0.1:13141/v1
-KEY_VAULTS_SECRET=7dv75vLYisn84VcA87Z8j+5o8VJ/S2IQULC+UK3Yl1Y=
-# NEXT_PUBLIC_IS_DESKTOP_APP=1
-NEXT_PUBLIC_SERVICE_MODE=client
-DATABASE_URL=postgres://postgres:password@localhost:5432/lobechat
-ENABLE_MOCK_DEV_USER=1
-MOCK_DEV_USER_ID=user_123
-DATABASE_DRIVER=node
-LOBE_DB_NAME=lobechat
-POSTGRES_PASSWORD=password
-MINIO_PORT=9000
-MINIO_ROOT_USER=minio
-MINIO_ROOT_PASSWORD=minio123
-MINIO_LOBE_BUCKET=lobe
-CASDOOR_PORT=8000
-AUTH_CASDOOR_ISSUER=http://localhost:8000
-S3_ENDPOINT=http://localhost:9000
-S3_ACCESS_KEY_ID=minio
-S3_SECRET_ACCESS_KEY=minio123
-S3_BUCKET=lobe
-S3_ENABLE_PATH_STYLE=1
-LOBE_PID=1
-MINIO_PID=1
-'@ | Set-Content '%ENV_FILE%' -Encoding UTF8"
-
+(
+    echo OPENAI_PROXY_URL=http://127.0.0.1:13141/v1
+    echo KEY_VAULTS_SECRET=7dv75vLYisn84VcA87Z8j+5o8VJ/S2IQULC+UK3Yl1Y=
+    echo # NEXT_PUBLIC_IS_DESKTOP_APP=1
+    echo NEXT_PUBLIC_SERVICE_MODE=client
+    echo DATABASE_URL=postgres://postgres:password@localhost:5432/lobechat
+    echo ENABLE_MOCK_DEV_USER=1
+    echo MOCK_DEV_USER_ID=user_123
+    echo DATABASE_DRIVER=node
+    echo LOBE_DB_NAME=lobechat
+    echo POSTGRES_PASSWORD=password
+    echo MINIO_PORT=9000
+    echo MINIO_ROOT_USER=minio
+    echo MINIO_ROOT_PASSWORD=minio123
+    echo MINIO_LOBE_BUCKET=lobe
+    echo CASDOOR_PORT=8000
+    echo AUTH_CASDOOR_ISSUER=http://localhost:8000
+    echo S3_ENDPOINT=http://localhost:9000
+    echo S3_ACCESS_KEY_ID=minio
+    echo S3_SECRET_ACCESS_KEY=minio123
+    echo S3_BUCKET=lobe
+    echo S3_ENABLE_PATH_STYLE=1
+    echo LOBE_PID=1
+    echo MINIO_PID=1
+) | powershell -NoProfile -ExecutionPolicy Bypass -Command "$input | Set-Content -Path '%ENV_FILE%' -Encoding UTF8"
 if %errorlevel% equ 0 (
     echo .env configured with required environment variables.
 ) else (

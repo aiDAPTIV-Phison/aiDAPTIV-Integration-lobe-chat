@@ -45,7 +45,8 @@ exit /b %EXIT_CODE%
 :: ---------------------------------------------------------
 
 :: Ensure we are in the script's directory
-pushd "%~dp0"
+cd /d "%~dp0"
+::pushd "%~dp0"
 
 echo ==========================================
 echo   Step 1: Install Prerequisites
@@ -76,12 +77,8 @@ if /I "!WSL_STATE!"=="Enabled" (
 
 ::: Update WSL (best effort, continue on error)
 echo Updating WSL...
-wsl --update
-if %errorlevel% equ 0 (
-    echo WSL updated successfully.
-) else (
-    echo [WARNING] Failed to update WSL (code %errorlevel%). Continuing...
-)
+start /wait "" wsl --update
+echo WSL update process finished.
 
 ::: Check Virtual Machine Platform (enable only when disabled)
 set "VMP_STATE="
@@ -104,33 +101,38 @@ set "HYPERV_STATE="
 for /f "tokens=2 delims=: " %%i in ('dism /online /Get-FeatureInfo /featurename:Microsoft-Hyper-V 2^>nul ^| findstr /C:"State :"') do set "HYPERV_STATE=%%i"
 if not defined HYPERV_STATE (
     echo [INFO] Hyper-V feature is not available on this edition. Skipping.
-) else if /I "!HYPERV_STATE!"=="Enabled" (
-    echo Hyper-V is already enabled.
 ) else (
-    echo Enabling Hyper-V...
-    dism /online /enable-feature /featurename:Microsoft-Hyper-V /all /norestart
-    if %errorlevel% equ 0 (
-        set "NEEDS_RESTART=1"
-        echo Hyper-V enabled successfully.
+    if /I "!HYPERV_STATE!"=="Enabled" (
+        echo Hyper-V is already enabled.
     ) else (
-        echo [INFO] Hyper-V could not be enabled. Error code: %errorlevel%.
-        echo This may be expected on Windows Home edition. Skipping.
+        echo Enabling Hyper-V...
+        dism /online /enable-feature /featurename:Microsoft-Hyper-V /all /norestart
+        if %errorlevel% equ 0 (
+            set "NEEDS_RESTART=1"
+            echo Hyper-V enabled successfully.
+        ) else (
+            echo [INFO] Hyper-V could not be enabled. Error code: %errorlevel%.
+            echo This may be expected on Windows Home edition. Skipping.
+        )
     )
 )
 
-::: Enable Long Paths (best effort, continue on error)
+::: Enable Long Paths (safe no-pipe version)
 echo Checking Long Paths Support...
-reg query "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled 2>nul | find "0x1" >nul
-if %errorlevel% neq 0 (
+set "LP_ENABLED=0"
+for /f "tokens=3 skip=1" %%z in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled 2^>nul') do (
+    if "%%z"=="0x1" set "LP_ENABLED=1"
+)
+if "%LP_ENABLED%"=="1" (
+    echo Long Paths Support is already enabled.
+) else (
     echo Enabling Long Paths Support...
     reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo Long Paths Support enabled.
     ) else (
-        echo [WARNING] Failed to enable Long Paths Support (code %errorlevel%). Continuing...
+        echo [WARNING] Failed to enable Long Paths Support.
     )
-) else (
-    echo Long Paths Support is already enabled.
 )
 
 echo [2/3] Checking Node.js...
@@ -221,6 +223,6 @@ if "%NEEDS_RESTART%"=="1" (
 )
 
 echo Done.
-popd
+::popd
 exit /b 0
 
