@@ -1,14 +1,15 @@
 import * as dotenv from 'dotenv';
 import { migrate as neonMigrate } from 'drizzle-orm/neon-serverless/migrator';
 import { migrate as nodeMigrate } from 'drizzle-orm/node-postgres/migrator';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 // @ts-ignore tsgo handle esm import cjs and compatibility issues
 import { DB_FAIL_INIT_HINT, PGVECTOR_HINT } from './errorHint';
 
 // Read the `.env` file if it exists, or a file specified by the
 // dotenv_config_path parameter that's passed to Node.js
-dotenv.config();
+// Explicitly resolve the path to ensure .env file is found
+dotenv.config({ path: resolve(process.cwd(), '.env') });
 
 const migrationsFolder = join(__dirname, '../../packages/database/migrations');
 

@@ -9,6 +9,19 @@ import { serverDBEnv } from '@/config/db';
 import * as schema from '../schemas';
 import { LobeChatDatabase } from '../type';
 
+// Try to load .env file if KEY_VAULTS_SECRET is not set
+// This is a safety measure in case dotenv wasn't loaded earlier
+if (!process.env.KEY_VAULTS_SECRET) {
+  try {
+    // Dynamic import to avoid dependency issues
+    const dotenv = require('dotenv');
+    const { resolve } = require('node:path');
+    dotenv.config({ path: resolve(process.cwd(), '.env') });
+  } catch {
+    // dotenv might not be available, that's okay if env vars are set another way
+  }
+}
+
 export const getDBInstance = (): LobeChatDatabase => {
   // In test environment, return a mock instance to avoid initialization errors
   if (process.env.NODE_ENV === 'test') return {} as LobeChatDatabase;
