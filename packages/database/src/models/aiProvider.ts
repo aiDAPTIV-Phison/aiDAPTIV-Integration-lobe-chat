@@ -320,12 +320,33 @@ export class AiProviderModel {
 
       const userSettings = item.settings || {};
 
-      let keyVaults = {};
+      let keyVaults: Record<string, any> = {};
       if (!!item.keyVaults) {
         try {
           keyVaults = await decrypt(item.keyVaults);
         } catch {
           /* empty */
+        }
+      }
+
+      if (item.id === 'openai') {
+        const envBaseURL = process.env.OPENAI_PROXY_URL || 'http://127.0.0.1:13141/v1';
+        const currentBaseURL = (keyVaults as { baseURL?: string }).baseURL;
+        const currentApiKey = (keyVaults as { apiKey?: string }).apiKey;
+        const defaultApiKey =
+          process.env.OPENAI_API_KEY ||
+          (envBaseURL !== 'https://api.openai.com/v1' ? 'None' : undefined);
+
+        const shouldUpdateBaseURL = !currentBaseURL || currentBaseURL !== envBaseURL;
+        const shouldUpdateApiKey = !currentApiKey || currentApiKey.trim() === '';
+
+        if (shouldUpdateBaseURL || shouldUpdateApiKey) {
+          keyVaults = {
+            ...keyVaults,
+            apiKey:
+              shouldUpdateApiKey && defaultApiKey ? defaultApiKey : currentApiKey || defaultApiKey,
+            baseURL: envBaseURL,
+          };
         }
       }
 
