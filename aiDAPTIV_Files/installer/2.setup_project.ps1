@@ -65,120 +65,37 @@ pnpm add @opentelemetry/instrumentation-http
 
 Write-Host "`n[3/4] Configuring Environment..." -ForegroundColor Yellow
 $EnvFile = "$ProjectRoot\.env"
-$EnvExample = "$ProjectRoot\.env.example.development"
 
-$NeedsKeyGeneration = $false
-$EnvContent = @()
+# Define the required environment variables
+$RequiredEnvVars = @"
+OPENAI_PROXY_URL=http://127.0.0.1:13141/v1
+KEY_VAULTS_SECRET=7dv75vLYisn84VcA87Z8j+5o8VJ/S2IQULC+UK3Yl1Y=
+# NEXT_PUBLIC_IS_DESKTOP_APP=1
+NEXT_PUBLIC_SERVICE_MODE=client
+DATABASE_URL=postgres://postgres:password@localhost:5432/lobechat
+ENABLE_MOCK_DEV_USER=1
+MOCK_DEV_USER_ID=user_123
+DATABASE_DRIVER=node
+LOBE_DB_NAME=lobechat
+POSTGRES_PASSWORD=password
+MINIO_PORT=9000
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio123
+MINIO_LOBE_BUCKET=lobe
+CASDOOR_PORT=8000
+AUTH_CASDOOR_ISSUER=http://localhost:8000
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY_ID=minio
+S3_SECRET_ACCESS_KEY=minio123
+S3_BUCKET=lobe
+S3_ENABLE_PATH_STYLE=1
+LOBE_PID=1
+MINIO_PID=1
+"@
 
-if (-not (Test-Path $EnvFile)) {
-    if (Test-Path $EnvExample) {
-        Copy-Item $EnvExample $EnvFile
-        Write-Host "Created .env from .env.example.development" -ForegroundColor Green
-    }
-    else {
-        # Create empty .env file if example doesn't exist
-        New-Item -Path $EnvFile -ItemType File -Force | Out-Null
-        Write-Warning ".env.example.development not found. Created empty .env."
-    }
-    $NeedsKeyGeneration = $true
-}
-
-# Load .env content
-if (Test-Path $EnvFile) {
-    $EnvContent = Get-Content $EnvFile
-    if ($null -eq $EnvContent) {
-        $EnvContent = @()
-    }
-    
-    # Check if KEY_VAULTS_SECRET exists and is not empty
-    $HasValidSecret = $false
-    foreach ($line in $EnvContent) {
-        if ($line -match "^KEY_VAULTS_SECRET\s*=\s*.+") {
-            $HasValidSecret = $true
-            break
-        }
-    }
-    
-    if (-not $HasValidSecret) {
-        Write-Host "KEY_VAULTS_SECRET is missing or empty, will generate a new one" -ForegroundColor Yellow
-        $NeedsKeyGeneration = $true
-    }
-}
-
-if ($NeedsKeyGeneration) {
-    Write-Host "Generating secure keys..."
-    $KeyVaultsSecret = node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-    
-    # Update or add KEY_VAULTS_SECRET
-    $Found = $false
-    $NewContent = @()
-    foreach ($line in $EnvContent) {
-        if ($line -match "^KEY_VAULTS_SECRET\s*=") {
-            $NewContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
-            $Found = $true
-        }
-        else {
-            $NewContent += $line
-        }
-    }
-    
-    if (-not $Found) {
-        $NewContent += "KEY_VAULTS_SECRET=$KeyVaultsSecret"
-    }
-    
-    $EnvContent = $NewContent
-}
-
-# Configure other environment variables
-$EnvContentArray = $EnvContent -join "`n"
-
-if ($EnvContentArray -notmatch "ENABLE_MOCK_DEV_USER=") {
-    $EnvContent += "ENABLE_MOCK_DEV_USER=1"
-    $EnvContent += "MOCK_DEV_USER_ID=user_123"
-}
-
-if ($EnvContentArray -notmatch "OPENAI_PROXY_URL=") {
-    $EnvContent += "OPENAI_PROXY_URL=http://127.0.0.1:13141/v1"
-}
-
-if ($EnvContentArray -match "LOBE_PORT=") {
-    $EnvContent = $EnvContent | ForEach-Object {
-        if ($_ -match "^LOBE_PORT=") {
-            "LOBE_PORT=3011"
-        }
-        else {
-            $_
-        }
-    }
-}
-else {
-    $EnvContent += "LOBE_PORT=3011"
-}
-
-if ($EnvContentArray -match "APP_URL=") {
-    $EnvContent = $EnvContent | ForEach-Object {
-        if ($_ -match "^APP_URL=") {
-            "APP_URL=http://localhost:3010"
-        }
-        else {
-            $_
-        }
-    }
-}
-else {
-    $EnvContent += "APP_URL=http://localhost:3010"
-}
-
-if ($EnvContentArray -notmatch "S3_ACCESS_KEY_ID=") {
-    $EnvContent += "S3_ACCESS_KEY_ID=minio"
-    $EnvContent += "S3_SECRET_ACCESS_KEY=minio123"
-    $EnvContent += "S3_ENDPOINT=http://localhost:9000"
-    $EnvContent += "S3_BUCKET=lobe"
-    $EnvContent += "S3_ENABLE_PATH_STYLE=1"
-}
-
-$EnvContent | Set-Content $EnvFile
-Write-Host ".env configured." -ForegroundColor Green
+# Create or overwrite .env file with required values
+$RequiredEnvVars | Set-Content $EnvFile -Encoding UTF8
+Write-Host ".env configured with required environment variables." -ForegroundColor Green
 
 # Check docker-compose/local/.env
 $DockerComposeEnvFile = "$ProjectRoot\docker-compose\local\.env"

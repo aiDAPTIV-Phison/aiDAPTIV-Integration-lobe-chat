@@ -212,7 +212,7 @@ export class AiProviderModel {
           const apiKey =
             process.env.OPENAI_API_KEY ||
             (baseURL !== 'https://api.openai.com/v1' ? 'None' : undefined);
-          const keyVaultsData: { apiKey?: string, baseURL: string; } = { baseURL };
+          const keyVaultsData: { apiKey?: string; baseURL: string } = { baseURL };
           if (apiKey) {
             keyVaultsData.apiKey = apiKey;
           }
@@ -248,25 +248,28 @@ export class AiProviderModel {
 
     // In Demo mode, check if OPENAI_PROXY_URL is set and update if needed
     // This ensures .env OPENAI_PROXY_URL takes precedence over database values
-    if (
-      id === 'openai' &&
-      encryptor &&
-      process.env.OPENAI_PROXY_URL &&
-      process.env.OPENAI_PROXY_URL !== 'https://api.openai.com/v1'
-    ) {
-      const envBaseURL = process.env.OPENAI_PROXY_URL;
-      const currentBaseURL = (keyVaults as { apiKey?: string, baseURL?: string; })?.baseURL;
-      const currentApiKey = (keyVaults as { apiKey?: string, baseURL?: string; })?.apiKey;
+    if (id === 'openai' && encryptor) {
+      // Use environment variable or default Demo mode URL
+      const envBaseURL = process.env.OPENAI_PROXY_URL || 'http://127.0.0.1:13141/v1';
+      const currentBaseURL = (keyVaults as { apiKey?: string; baseURL?: string })?.baseURL;
+      const currentApiKey = (keyVaults as { apiKey?: string; baseURL?: string })?.apiKey;
 
       // Set default API key in Demo mode if not already set
-      const defaultApiKey = process.env.OPENAI_API_KEY || 'None';
+      // If OPENAI_PROXY_URL is set to a non-default value, use 'None' as default API key
+      const defaultApiKey =
+        process.env.OPENAI_API_KEY ||
+        (envBaseURL !== 'https://api.openai.com/v1' ? 'None' : undefined);
       const shouldUpdateApiKey = !currentApiKey || currentApiKey.trim() === '';
 
       // Update if the baseURL or API key needs to be updated
-      if (currentBaseURL !== envBaseURL || shouldUpdateApiKey) {
+      // Always update in Demo mode (when baseURL is not the default OpenAI URL)
+      if (
+        envBaseURL !== 'https://api.openai.com/v1' &&
+        (currentBaseURL !== envBaseURL || shouldUpdateApiKey)
+      ) {
         const updatedKeyVaultsData = {
           ...keyVaults,
-          apiKey: shouldUpdateApiKey ? defaultApiKey : currentApiKey,
+          apiKey: shouldUpdateApiKey && defaultApiKey ? defaultApiKey : currentApiKey,
           baseURL: envBaseURL,
         };
 

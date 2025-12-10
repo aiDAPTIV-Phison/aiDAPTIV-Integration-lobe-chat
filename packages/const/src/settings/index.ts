@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   image: DEFAULT_IMAGE_CONFIG,
   keyVaults: {
     openai: {
+      apiKey: 'None',
       baseURL: 'http://127.0.0.1:13141/v1',
     },
   },
