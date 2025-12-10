@@ -208,7 +208,15 @@ export class AiProviderModel {
         let keyVaults = null;
         if (id === 'openai' && encryptor) {
           const baseURL = process.env.OPENAI_PROXY_URL || 'http://127.0.0.1:13141/v1';
-          keyVaults = await encryptor(JSON.stringify({ baseURL }));
+          // In Demo mode, set a default API key if not provided
+          const apiKey =
+            process.env.OPENAI_API_KEY ||
+            (baseURL !== 'https://api.openai.com/v1' ? 'None' : undefined);
+          const keyVaultsData: { apiKey?: string, baseURL: string; } = { baseURL };
+          if (apiKey) {
+            keyVaultsData.apiKey = apiKey;
+          }
+          keyVaults = await encryptor(JSON.stringify(keyVaultsData));
         }
 
         await this.db.insert(aiProviders).values({
@@ -235,6 +243,42 @@ export class AiProviderModel {
         keyVaults = await decrypt(result.keyVaults);
       } catch {
         /* empty */
+      }
+    }
+
+    // In Demo mode, check if OPENAI_PROXY_URL is set and update if needed
+    // This ensures .env OPENAI_PROXY_URL takes precedence over database values
+    if (
+      id === 'openai' &&
+      encryptor &&
+      process.env.OPENAI_PROXY_URL &&
+      process.env.OPENAI_PROXY_URL !== 'https://api.openai.com/v1'
+    ) {
+      const envBaseURL = process.env.OPENAI_PROXY_URL;
+      const currentBaseURL = (keyVaults as { apiKey?: string, baseURL?: string; })?.baseURL;
+      const currentApiKey = (keyVaults as { apiKey?: string, baseURL?: string; })?.apiKey;
+
+      // Set default API key in Demo mode if not already set
+      const defaultApiKey = process.env.OPENAI_API_KEY || 'None';
+      const shouldUpdateApiKey = !currentApiKey || currentApiKey.trim() === '';
+
+      // Update if the baseURL or API key needs to be updated
+      if (currentBaseURL !== envBaseURL || shouldUpdateApiKey) {
+        const updatedKeyVaultsData = {
+          ...keyVaults,
+          apiKey: shouldUpdateApiKey ? defaultApiKey : currentApiKey,
+          baseURL: envBaseURL,
+        };
+
+        const updatedKeyVaults = await encryptor(JSON.stringify(updatedKeyVaultsData));
+
+        await this.db
+          .update(aiProviders)
+          .set({ keyVaults: updatedKeyVaults, updatedAt: new Date() })
+          .where(and(eq(aiProviders.id, id), eq(aiProviders.userId, this.userId)));
+
+        // Update keyVaults to reflect the new value
+        keyVaults = updatedKeyVaultsData;
       }
     }
 
