@@ -263,13 +263,20 @@ export class AiProviderModel {
 
       // Update if the baseURL or API key needs to be updated
       // Always update in Demo mode (when baseURL is not the default OpenAI URL)
-      if (
+      // Also update if baseURL is missing or different, or if API key is missing
+      const needsUpdate =
         envBaseURL !== 'https://api.openai.com/v1' &&
-        (currentBaseURL !== envBaseURL || shouldUpdateApiKey)
-      ) {
+        (currentBaseURL !== envBaseURL ||
+          !currentBaseURL ||
+          shouldUpdateApiKey ||
+          (envBaseURL === 'http://127.0.0.1:13141/v1' &&
+            (!currentApiKey || currentApiKey.trim() === '')));
+
+      if (needsUpdate) {
         const updatedKeyVaultsData = {
           ...keyVaults,
-          apiKey: shouldUpdateApiKey && defaultApiKey ? defaultApiKey : currentApiKey,
+          apiKey:
+            shouldUpdateApiKey && defaultApiKey ? defaultApiKey : currentApiKey || defaultApiKey,
           baseURL: envBaseURL,
         };
 
