@@ -58,54 +58,77 @@ set "NEEDS_RESTART=0"
 
 echo [1/3] Checking System Components (WSL ^& Hyper-V)...
 
-:: Check WSL
-echo Checking WSL status...
-dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-if %errorlevel% equ 0 (
-    echo WSL enabled or already active.
-    set "NEEDS_RESTART=1"
+::: Check WSL (enable only when disabled)
+set "WSL_STATE="
+for /f "tokens=2 delims=: " %%i in ('dism /online /Get-FeatureInfo /featurename:Microsoft-Windows-Subsystem-Linux 2^>nul ^| findstr /C:"State :"') do set "WSL_STATE=%%i"
+if /I "!WSL_STATE!"=="Enabled" (
+    echo WSL is already enabled.
 ) else (
-    echo [WARNING] Failed to enable WSL. Error code: %errorlevel%
+    echo Enabling Windows Subsystem for Linux...
+    dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+    if %errorlevel% equ 0 (
+        set "NEEDS_RESTART=1"
+        echo WSL enabled successfully.
+    ) else (
+        echo [WARNING] Failed to enable WSL. Error code: %errorlevel%
+    )
 )
 
-:: Update WSL to avoid prompt after restart
+::: Update WSL (best effort, continue on error)
 echo Updating WSL...
 wsl --update
 if %errorlevel% equ 0 (
     echo WSL updated successfully.
 ) else (
-    echo [WARNING] Failed to update WSL.
+    echo [WARNING] Failed to update WSL (code %errorlevel%). Continuing...
 )
 
-:: Check Virtual Machine Platform
-echo Checking Virtual Machine Platform status...
-dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-if %errorlevel% equ 0 (
-    echo Virtual Machine Platform enabled or already active.
-    set "NEEDS_RESTART=1"
+::: Check Virtual Machine Platform (enable only when disabled)
+set "VMP_STATE="
+for /f "tokens=2 delims=: " %%i in ('dism /online /Get-FeatureInfo /featurename:VirtualMachinePlatform 2^>nul ^| findstr /C:"State :"') do set "VMP_STATE=%%i"
+if /I "!VMP_STATE!"=="Enabled" (
+    echo Virtual Machine Platform is already enabled.
 ) else (
-    echo [WARNING] Failed to enable Virtual Machine Platform. Error code: %errorlevel%
+    echo Enabling Virtual Machine Platform...
+    dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+    if %errorlevel% equ 0 (
+        set "NEEDS_RESTART=1"
+        echo Virtual Machine Platform enabled successfully.
+    ) else (
+        echo [WARNING] Failed to enable Virtual Machine Platform. Error code: %errorlevel%
+    )
 )
 
-:: Check Hyper-V
-echo Checking Hyper-V status...
-:: Try to enable Hyper-V directly. If it's not available (Home edition), it will fail gracefully.
-dism /online /enable-feature /featurename:Microsoft-Hyper-V /all /norestart
-if %errorlevel% equ 0 (
-    echo Hyper-V enabled or already active.
-    set "NEEDS_RESTART=1"
+::: Check Hyper-V (skip gracefully if not available)
+set "HYPERV_STATE="
+for /f "tokens=2 delims=: " %%i in ('dism /online /Get-FeatureInfo /featurename:Microsoft-Hyper-V 2^>nul ^| findstr /C:"State :"') do set "HYPERV_STATE=%%i"
+if not defined HYPERV_STATE (
+    echo [INFO] Hyper-V feature is not available on this edition. Skipping.
+) else if /I "!HYPERV_STATE!"=="Enabled" (
+    echo Hyper-V is already enabled.
 ) else (
-    echo [INFO] Hyper-V could not be enabled. Error code: %errorlevel%.
-    echo This is expected on Windows Home edition. Skipping.
+    echo Enabling Hyper-V...
+    dism /online /enable-feature /featurename:Microsoft-Hyper-V /all /norestart
+    if %errorlevel% equ 0 (
+        set "NEEDS_RESTART=1"
+        echo Hyper-V enabled successfully.
+    ) else (
+        echo [INFO] Hyper-V could not be enabled. Error code: %errorlevel%.
+        echo This may be expected on Windows Home edition. Skipping.
+    )
 )
 
-:CheckLongPaths
+::: Enable Long Paths (best effort, continue on error)
 echo Checking Long Paths Support...
 reg query "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled 2>nul | find "0x1" >nul
 if %errorlevel% neq 0 (
     echo Enabling Long Paths Support...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f
-    echo Long Paths Support enabled.
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo Long Paths Support enabled.
+    ) else (
+        echo [WARNING] Failed to enable Long Paths Support (code %errorlevel%). Continuing...
+    )
 ) else (
     echo Long Paths Support is already enabled.
 )
@@ -129,8 +152,8 @@ if not defined NODE_MSI (
 )
 
 echo Installing !NODE_MSI!...
-echo Command: msiexec /i "!NODE_MSI!" /qb /norestart
-start /wait "" msiexec /i "!NODE_MSI!" /qb /norestart
+echo Command: msiexec /i "!NODE_MSI!" /qn /norestart
+start /wait "" msiexec /i "!NODE_MSI!" /qn /norestart
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js installation failed with error code %errorlevel%.
     exit /b 1
@@ -159,8 +182,8 @@ if not defined DOCKER_EXE (
 )
 
 echo Installing Docker Desktop...
-echo Command: "!DOCKER_EXE!" install --accept-license --quiet
-start /wait "" "!DOCKER_EXE!" install --accept-license --quiet
+echo Command: "!DOCKER_EXE!" install --accept-license
+start /wait "" "!DOCKER_EXE!" install --accept-license
 if %errorlevel% neq 0 (
     echo [ERROR] Docker installation failed with error code %errorlevel%.
     exit /b 1
@@ -169,9 +192,10 @@ if %errorlevel% neq 0 (
 echo Docker Desktop installation finished.
 set "NEEDS_RESTART=1"
 
+:: echo Configuring Docker to start on login (Current User)...
+:: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "Docker Desktop" /t REG_SZ /d "\"C:\Program Files\Docker\Docker\Docker Desktop.exe\"" /f >nul 2>&1
 echo Configuring Docker to start on login (All Users)...
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "Docker Desktop" /t REG_SZ /d "\"C:\Program Files\Docker\Docker\Docker Desktop.exe\"" /f >nul 2>&1
-
 if %errorlevel% equ 0 (
     echo Docker set to auto-start successfully.
 ) else (
@@ -199,3 +223,4 @@ if "%NEEDS_RESTART%"=="1" (
 echo Done.
 popd
 exit /b 0
+

@@ -52,8 +52,9 @@ Write-Host "Installing project dependencies (pnpm install)..."
 # pnpm add -D cross-env
 # pnpm approve-builds
 
-# Cange to root 
-pnpm config set store-dir R:\.pnpm-store
+$driveRoot = ([System.IO.Path]::GetPathRoot($ProjectRoot)).TrimEnd('\')
+$pnpmStore = "$driveRoot\.pnpm-store"
+pnpm config set store-dir $pnpmStore
 pnpm config set package-import-method copy
 pnpm -w install --prefer-offline
 pnpm add @aws-sdk/client-bedrock-runtime

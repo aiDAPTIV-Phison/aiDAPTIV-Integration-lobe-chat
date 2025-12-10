@@ -87,7 +87,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Installing project dependencies (pnpm install)...
-set "PNPM_STORE_DIR=%PROJECT_ROOT:~0,2%\.pnpm-store"
+for %%d in ("%PROJECT_ROOT%") do set "PNPM_STORE_DIR=%%~dd\.pnpm-store"
 call pnpm config set store-dir "%PNPM_STORE_DIR%"
 call pnpm config set package-import-method copy
 call pnpm -w install --prefer-offline
@@ -102,7 +102,8 @@ call pnpm add @aws-sdk/client-bedrock-runtime
 call pnpm add comlink
 call pnpm add dompurify
 call pnpm add request-filtering-agent
-call pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl @opentelemetry/auto-instrumentations-node @opentelemetry/auto-instrumentations-node
+call pnpm add @opentelemetry/semantic-conventions @xmldom/xmldom concat-stream xlsx yauzl @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-metrics-otlp-http @opentelemetry/exporter-trace-otlp-http @opentelemetry/instrumentation-pg @opentelemetry/resources @opentelemetry/sdk-metrics @opentelemetry/sdk-node
+call pnpm add @opentelemetry/instrumentation-http
 if %errorlevel% neq 0 (
     echo [WARNING] Some packages may have failed to install. Continuing...
 )
@@ -110,14 +111,36 @@ if %errorlevel% neq 0 (
 echo.
 echo [3/4] Configuring Environment...
 set "ENV_FILE=%PROJECT_ROOT%\.env"
-set "ENV_EXAMPLE=%PROJECT_ROOT%\.env.example.development"
 
-:: Use PowerShell script block for comprehensive .env configuration
 echo Configuring .env file...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $envFile = '%ENV_FILE%'; $envExample = '%ENV_EXAMPLE%'; $needsKeyGeneration = $false; $content = ''; if (Test-Path $envFile) { $content = Get-Content $envFile -Raw; if ($null -eq $content) { $content = '' }; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $hasValidSecret = $false; foreach ($line in $contentLines) { if ($line -match '^KEY_VAULTS_SECRET\s*=\s*.+') { $hasValidSecret = $true; break } }; if (-not $hasValidSecret) { Write-Host 'KEY_VAULTS_SECRET is missing or empty, will generate a new one' -ForegroundColor Yellow; $needsKeyGeneration = $true } } else { if (Test-Path $envExample) { Copy-Item $envExample $envFile; Write-Host 'Created .env from .env.example.development' -ForegroundColor Green; $content = Get-Content $envFile -Raw } else { New-Item -Path $envFile -ItemType File -Force | Out-Null; $content = '' }; $needsKeyGeneration = $true }; if ($needsKeyGeneration) { Write-Host 'Generating secure keys...' -ForegroundColor Yellow; $keySecret = node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $found = $false; $newContent = @(); foreach ($line in $contentLines) { if ($line -match '^KEY_VAULTS_SECRET\s*=') { $newContent += \"KEY_VAULTS_SECRET=$keySecret\"; $found = $true } else { $newContent += $line } }; if (-not $found) { $newContent += \"KEY_VAULTS_SECRET=$keySecret\" }; $content = $newContent -join \"`r`n\" } else { $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; $newContent = @(); foreach ($line in $contentLines) { $newContent += $line }; $content = $newContent -join \"`r`n\" }; $contentLines = if ($content) { $content -split \"`r?`n\" } else { @() }; if ($content -notmatch 'ENABLE_MOCK_DEV_USER=') { $contentLines += 'ENABLE_MOCK_DEV_USER=1'; $contentLines += 'MOCK_DEV_USER_ID=user_123' }; if ($content -notmatch 'OPENAI_PROXY_URL=') { $contentLines += 'OPENAI_PROXY_URL=http://127.0.0.1:13141/v1' }; $contentLines = $contentLines | ForEach-Object { if ($_ -match '^LOBE_PORT=') { 'LOBE_PORT=3011' } else { $_ } }; if ($content -notmatch 'LOBE_PORT=') { $contentLines += 'LOBE_PORT=3011' }; $contentLines = $contentLines | ForEach-Object { if ($_ -match '^APP_URL=') { 'APP_URL=http://localhost:3010' } else { $_ } }; if ($content -notmatch 'APP_URL=') { $contentLines += 'APP_URL=http://localhost:3010' }; if ($content -notmatch 'S3_ACCESS_KEY_ID=') { $contentLines += 'S3_ACCESS_KEY_ID=minio'; $contentLines += 'S3_SECRET_ACCESS_KEY=minio123'; $contentLines += 'S3_ENDPOINT=http://localhost:9000'; $contentLines += 'S3_BUCKET=lobe'; $contentLines += 'S3_ENABLE_PATH_STYLE=1' }; Set-Content $envFile -Value ($contentLines -join \"`r`n\") -NoNewline; Write-Host '.env configured.' -ForegroundColor Green }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "@'
+OPENAI_PROXY_URL=http://127.0.0.1:13141/v1
+KEY_VAULTS_SECRET=7dv75vLYisn84VcA87Z8j+5o8VJ/S2IQULC+UK3Yl1Y=
+# NEXT_PUBLIC_IS_DESKTOP_APP=1
+NEXT_PUBLIC_SERVICE_MODE=client
+DATABASE_URL=postgres://postgres:password@localhost:5432/lobechat
+ENABLE_MOCK_DEV_USER=1
+MOCK_DEV_USER_ID=user_123
+DATABASE_DRIVER=node
+LOBE_DB_NAME=lobechat
+POSTGRES_PASSWORD=password
+MINIO_PORT=9000
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio123
+MINIO_LOBE_BUCKET=lobe
+CASDOOR_PORT=8000
+AUTH_CASDOOR_ISSUER=http://localhost:8000
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY_ID=minio
+S3_SECRET_ACCESS_KEY=minio123
+S3_BUCKET=lobe
+S3_ENABLE_PATH_STYLE=1
+LOBE_PID=1
+MINIO_PID=1
+'@ | Set-Content '%ENV_FILE%' -Encoding UTF8"
 
 if %errorlevel% equ 0 (
-    echo Environment configuration complete.
+    echo .env configured with required environment variables.
 ) else (
     echo [WARNING] Failed to configure .env file. You may need to configure it manually.
 )
@@ -229,3 +252,4 @@ echo ==========================================
 
 popd
 exit /b 0
+

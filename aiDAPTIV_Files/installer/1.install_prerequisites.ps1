@@ -30,7 +30,8 @@ if ($wsl.State -ne 'Enabled') {
     Write-Host "Enabling Windows Subsystem for Linux..." -ForegroundColor Cyan
     Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart
     $needsRestart = $true
-} else {
+}
+else {
     Write-Host "WSL is already enabled." -ForegroundColor Green
 }
 
@@ -40,7 +41,8 @@ if ($vmp.State -ne 'Enabled') {
     Write-Host "Enabling Virtual Machine Platform..." -ForegroundColor Cyan
     Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All -NoRestart
     $needsRestart = $true
-} else {
+}
+else {
     Write-Host "Virtual Machine Platform is already enabled." -ForegroundColor Green
 }
 
@@ -52,14 +54,43 @@ try {
             Write-Host "Enabling Hyper-V..." -ForegroundColor Cyan
             Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All -NoRestart
             $needsRestart = $true
-        } else {
+        }
+        else {
             Write-Host "Hyper-V is already enabled." -ForegroundColor Green
         }
-    } else {
-         Write-Warning "Hyper-V feature is not available on this edition of Windows. Skipping."
     }
-} catch {
+    else {
+        Write-Warning "Hyper-V feature is not available on this edition of Windows. Skipping."
+    }
+}
+catch {
     Write-Warning "Failed to check Hyper-V status. Skipping."
+}
+
+# Best-effort WSL update (do not stop on error)
+Write-Host "Updating WSL (best effort)..." -ForegroundColor Cyan
+try {
+    wsl --update
+    Write-Host "WSL updated successfully." -ForegroundColor Green
+}
+catch {
+    Write-Warning "Failed to update WSL. Continuing..."
+}
+
+# Enable Long Paths (best effort)
+Write-Host "Checking Long Paths support..." -ForegroundColor Cyan
+try {
+    $longPaths = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -ErrorAction SilentlyContinue
+    if ($longPaths.LongPathsEnabled -ne 1) {
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -Type DWord
+        Write-Host "Long Paths enabled." -ForegroundColor Green
+    }
+    else {
+        Write-Host "Long Paths already enabled." -ForegroundColor Green
+    }
+}
+catch {
+    Write-Warning "Failed to enable Long Paths. Continuing..."
 }
 
 Write-Host "`n[2/3] Checking Node.js..." -ForegroundColor Yellow
@@ -73,10 +104,11 @@ catch {
     if ($nodeInstaller) {
         Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($nodeInstaller.FullName)`" /qn /norestart" -Wait
         
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
         Write-Host "Node.js installed successfully." -ForegroundColor Green
         $needsRestart = $true
-    } else {
+    }
+    else {
         Write-Error "Node.js installer (node-*.msi) not found in $PSScriptRoot"
     }
 }
@@ -84,7 +116,8 @@ catch {
 Write-Host "`n[3/3] Checking Docker..." -ForegroundColor Yellow
 if (Get-Command "docker" -ErrorAction SilentlyContinue) {
     Write-Host "Docker is already installed." -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "Docker not found. Installing..." -ForegroundColor Cyan
     $dockerInstaller = Get-ChildItem -Path $PSScriptRoot -Filter "Docker Desktop Installer.exe" | Select-Object -First 1
     if ($dockerInstaller) {
@@ -94,20 +127,30 @@ if (Get-Command "docker" -ErrorAction SilentlyContinue) {
         Write-Host "Docker Desktop installation finished." -ForegroundColor Green
         $needsRestart = $true
 
-        Write-Host "Configuring Docker to start on login..." -ForegroundColor Cyan
+        Write-Host "Configuring Docker to start on login (All Users)..." -ForegroundColor Cyan
         $DockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
         if (Test-Path $DockerExe) {
             try {
-                Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" `
-                                    -Name "Docker Desktop" `
-                                    -Value "`"$DockerExe`"" -ErrorAction Stop
-                Write-Host "Docker set to auto-start successfully." -ForegroundColor Green
-            } catch {
-                Write-Warning "Failed to set Docker auto-start registry key."
+                # HKLM for all users auto-start
+                New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Docker Desktop" -PropertyType String -Value "`"$DockerExe`"" -Force -ErrorAction Stop | Out-Null
+                Write-Host "Docker set to auto-start (HKLM) successfully." -ForegroundColor Green
+            }
+            catch {
+                Write-Warning "Failed to set Docker auto-start registry key in HKLM. Continuing..."
+            }
+
+            try {
+                Write-Host "Ensuring Docker Background Service is set to Auto-Start..." -ForegroundColor Cyan
+                sc.exe config com.docker.service start= auto | Out-Null
+                Write-Host "Docker background service set to Auto." -ForegroundColor Green
+            }
+            catch {
+                Write-Warning "Failed to set Docker service start mode. Continuing..."
             }
         }
         # ========================================================
-    } else {
+    }
+    else {
         Write-Error "Docker installer (Docker Desktop Installer.exe) not found in $PSScriptRoot"
     }
 }
@@ -121,7 +164,8 @@ if ($needsRestart) {
     if ($choice -eq 'Y' -or $choice -eq 'y') {
         Restart-Computer
     }
-} else {
+}
+else {
     Write-Host "Prerequisites are ready." -ForegroundColor Green
     Write-Host "You can now run '2.setup_project.ps1'." -ForegroundColor Cyan
 }
