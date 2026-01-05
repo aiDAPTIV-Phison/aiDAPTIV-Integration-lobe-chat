@@ -50,16 +50,7 @@ Run the second script to install dependencies and configure the environment.
 
 ---
 
-## 2. Prerequisites
-
-Before installing, ensure your system meets the following requirements:
-
-- **Docker Desktop**: Required for running local databases and services
-- **Node.js**: Version 22 or higher (Included in the installer scripts)
-
----
-
-## 3. Feature Showcase: aiDAPTIV+ & Demo
+## 2. Feature Showcase: aiDAPTIV+ & Demo
 
 The core feature of this integration is the **Automatic KV Cache Warming**. This ensures that when you interact with an AI agent, the context is pre-processed, resulting in faster response times.
 
@@ -102,7 +93,7 @@ Once the cache is built:
 
 ---
 
-## 4. Running the Application
+## 3. Running the Application
 
 Once the installation is complete, you have two options to start the application.
 
@@ -126,7 +117,7 @@ Once the installation is complete, you have two options to start the application
 
 ---
 
-## 5. Configuration
+## 4. Configuration
 
 ### Model Provider Settings
 
@@ -140,7 +131,7 @@ To verify or change this:
 
 ---
 
-## 6. Troubleshooting
+## 5. Troubleshooting
 
 **Q: I get a 401 Unauthorized error in the console when editing settings.**
 A: This issue has been resolved in the latest update. Ensure you have pulled the latest code. The system now correctly handles authentication headers for local proxy requests.
