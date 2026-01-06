@@ -143,26 +143,50 @@ if %errorlevel% equ 0 (
 )
 
 echo Node.js not found. Installing...
-set "NODE_MSI="
-for %%f in (node-*.msi) do set "NODE_MSI=%%~f"
+echo Downloading Node.js installer from official website...
 
-if not defined NODE_MSI (
-    echo [ERROR] Node.js installer node-*.msi not found in %~dp0
-    echo Files in current directory:
-    dir /b
+:: Detect architecture
+set "NODE_ARCH=x64"
+for /f "tokens=*" %%i in ('powershell -Command "(Get-WmiObject Win32_Processor).Architecture"') do set "ARCH_CODE=%%i"
+if "%ARCH_CODE%"=="5" set "NODE_ARCH=x86"
+if "%ARCH_CODE%"=="12" set "NODE_ARCH=arm64"
+
+set "NODE_VERSION=24.11.0"
+set "NODE_URL=https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-%NODE_ARCH%.msi"
+set "NODE_MSI=%TEMP%\node-v%NODE_VERSION%-%NODE_ARCH%.msi"
+
+echo Node.js Version: %NODE_VERSION%
+echo Architecture: %NODE_ARCH%
+echo Download URL: %NODE_URL%
+
+:: Download using PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%NODE_MSI%' -UseBasicParsing"
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to download Node.js installer. Error code: %errorlevel%
+    echo Please check your internet connection and try again.
     exit /b 1
 )
 
-echo Installing !NODE_MSI!...
-echo Command: msiexec /i "!NODE_MSI!" /qn /norestart
-start /wait "" msiexec /i "!NODE_MSI!" /qn /norestart
+if not exist "%NODE_MSI%" (
+    echo [ERROR] Node.js installer not found at %NODE_MSI%
+    exit /b 1
+)
+
+echo Node.js installer downloaded successfully.
+echo Installing Node.js...
+echo Command: msiexec /i "%NODE_MSI%" /qn /norestart
+start /wait "" msiexec /i "%NODE_MSI%" /qn /norestart
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js installation failed with error code %errorlevel%.
+    del "%NODE_MSI%" >nul 2>&1
     exit /b 1
 )
 
 echo Node.js installed successfully.
 set "NEEDS_RESTART=1"
+
+:: Clean up downloaded installer
+del "%NODE_MSI%" >nul 2>&1
 
 :CheckDocker
 echo [3/3] Checking Docker...
@@ -173,26 +197,47 @@ if %errorlevel% equ 0 (
 )
 
 echo Docker not found. Installing...
-set "DOCKER_EXE="
-for %%f in ("Docker Desktop Installer.exe") do set "DOCKER_EXE=%%~f"
+echo Downloading Docker Desktop installer from official website...
 
-if not defined DOCKER_EXE (
-    echo [ERROR] Docker installer 'Docker Desktop Installer.exe' not found in %~dp0
-    echo Files in current directory:
-    dir /b
+:: Detect architecture for Docker Desktop
+set "DOCKER_ARCH=amd64"
+for /f "tokens=*" %%i in ('powershell -Command "(Get-WmiObject Win32_Processor).Architecture"') do set "ARCH_CODE=%%i"
+if "%ARCH_CODE%"=="12" set "DOCKER_ARCH=arm64"
+
+set "DOCKER_URL=https://desktop.docker.com/win/main/%DOCKER_ARCH%/Docker Desktop Installer.exe"
+set "DOCKER_EXE=%TEMP%\Docker Desktop Installer.exe"
+
+echo Architecture: %DOCKER_ARCH%
+echo Download URL: %DOCKER_URL%
+
+:: Download using PowerShell (PowerShell will handle URL encoding automatically)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$url = '%DOCKER_URL%'; $outFile = '%DOCKER_EXE%'; Invoke-WebRequest -Uri $url -OutFile $outFile -UseBasicParsing"
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to download Docker Desktop installer. Error code: %errorlevel%
+    echo Please check your internet connection and try again.
     exit /b 1
 )
 
+if not exist "%DOCKER_EXE%" (
+    echo [ERROR] Docker Desktop installer not found at %DOCKER_EXE%
+    exit /b 1
+)
+
+echo Docker Desktop installer downloaded successfully.
 echo Installing Docker Desktop...
-echo Command: "!DOCKER_EXE!" install --accept-license
-start /wait "" "!DOCKER_EXE!" install --accept-license
+echo Command: "%DOCKER_EXE%" install --accept-license
+start /wait "" "%DOCKER_EXE%" install --accept-license
 if %errorlevel% neq 0 (
     echo [ERROR] Docker installation failed with error code %errorlevel%.
+    del "%DOCKER_EXE%" >nul 2>&1
     exit /b 1
 )
 
 echo Docker Desktop installation finished.
 set "NEEDS_RESTART=1"
+
+:: Clean up downloaded installer
+del "%DOCKER_EXE%" >nul 2>&1
 
 :: echo Configuring Docker to start on login (Current User)...
 :: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "Docker Desktop" /t REG_SZ /d "\"C:\Program Files\Docker\Docker\Docker Desktop.exe\"" /f >nul 2>&1

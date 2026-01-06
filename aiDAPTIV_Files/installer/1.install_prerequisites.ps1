@@ -100,16 +100,47 @@ try {
 }
 catch {
     Write-Host "Node.js not found. Installing..." -ForegroundColor Cyan
-    $nodeInstaller = Get-ChildItem -Path $PSScriptRoot -Filter "node-*.msi" | Select-Object -First 1
-    if ($nodeInstaller) {
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($nodeInstaller.FullName)`" /qn /norestart" -Wait
+    
+    # Download Node.js installer from official website
+    $nodeVersion = "24.11.0"  # Node.js 24 LTS version
+    $nodeArch = "x64"  # Default to x64, can be enhanced to detect architecture
+    
+    # Detect architecture
+    $arch = (Get-WmiObject Win32_Processor).Architecture
+    if ($arch -eq 5) { $nodeArch = "x86" }
+    elseif ($arch -eq 12) { $nodeArch = "arm64" }
+    
+    $nodeInstallerUrl = "https://nodejs.org/dist/v$nodeVersion/node-v$nodeVersion-$nodeArch.msi"
+    $nodeInstallerPath = Join-Path $env:TEMP "node-v$nodeVersion-$nodeArch.msi"
+    
+    Write-Host "Downloading Node.js v$nodeVersion ($nodeArch) from official website..." -ForegroundColor Cyan
+    Write-Host "URL: $nodeInstallerUrl" -ForegroundColor Gray
+    
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $nodeInstallerUrl -OutFile $nodeInstallerPath -UseBasicParsing
+        $ProgressPreference = 'Continue'
         
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        Write-Host "Node.js installed successfully." -ForegroundColor Green
-        $needsRestart = $true
+        if (Test-Path $nodeInstallerPath) {
+            Write-Host "Node.js installer downloaded successfully." -ForegroundColor Green
+            Write-Host "Installing Node.js..." -ForegroundColor Cyan
+            Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$nodeInstallerPath`" /qn /norestart" -Wait
+            
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            Write-Host "Node.js installed successfully." -ForegroundColor Green
+            $needsRestart = $true
+            
+            # Clean up downloaded installer
+            Remove-Item $nodeInstallerPath -Force -ErrorAction SilentlyContinue
+        }
+        else {
+            Write-Error "Failed to download Node.js installer. File not found at $nodeInstallerPath"
+        }
     }
-    else {
-        Write-Error "Node.js installer (node-*.msi) not found in $PSScriptRoot"
+    catch {
+        Write-Error "Failed to download Node.js installer: $_"
+        Write-Host "Please check your internet connection and try again." -ForegroundColor Red
+        exit 1
     }
 }
 
@@ -119,39 +150,65 @@ if (Get-Command "docker" -ErrorAction SilentlyContinue) {
 }
 else {
     Write-Host "Docker not found. Installing..." -ForegroundColor Cyan
-    $dockerInstaller = Get-ChildItem -Path $PSScriptRoot -Filter "Docker Desktop Installer.exe" | Select-Object -First 1
-    if ($dockerInstaller) {
-        Write-Host "Installing Docker Desktop..."
+    
+    # Download Docker Desktop installer from official website
+    # Detect architecture for Docker Desktop
+    $dockerArch = "amd64"  # Default to amd64
+    $arch = (Get-WmiObject Win32_Processor).Architecture
+    if ($arch -eq 12) { $dockerArch = "arm64" }
+    
+    $dockerInstallerUrl = "https://desktop.docker.com/win/main/$dockerArch/Docker%20Desktop%20Installer.exe"
+    $dockerInstallerPath = Join-Path $env:TEMP "Docker Desktop Installer.exe"
+    
+    Write-Host "Downloading Docker Desktop from official website..." -ForegroundColor Cyan
+    Write-Host "URL: $dockerInstallerUrl" -ForegroundColor Gray
+    
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $dockerInstallerUrl -OutFile $dockerInstallerPath -UseBasicParsing
+        $ProgressPreference = 'Continue'
+        
+        if (Test-Path $dockerInstallerPath) {
+            Write-Host "Docker Desktop installer downloaded successfully." -ForegroundColor Green
+            Write-Host "Installing Docker Desktop..." -ForegroundColor Cyan
+            
+            Start-Process -FilePath $dockerInstallerPath -ArgumentList "install --accept-license" -Wait
+            Write-Host "Docker Desktop installation finished." -ForegroundColor Green
+            $needsRestart = $true
 
-        Start-Process -FilePath $dockerInstaller.FullName -ArgumentList "install --accept-license" -Wait
-        Write-Host "Docker Desktop installation finished." -ForegroundColor Green
-        $needsRestart = $true
+            Write-Host "Configuring Docker to start on login (All Users)..." -ForegroundColor Cyan
+            $DockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+            if (Test-Path $DockerExe) {
+                try {
+                    # HKLM for all users auto-start
+                    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Docker Desktop" -PropertyType String -Value "`"$DockerExe`"" -Force -ErrorAction Stop | Out-Null
+                    Write-Host "Docker set to auto-start (HKLM) successfully." -ForegroundColor Green
+                }
+                catch {
+                    Write-Warning "Failed to set Docker auto-start registry key in HKLM. Continuing..."
+                }
 
-        Write-Host "Configuring Docker to start on login (All Users)..." -ForegroundColor Cyan
-        $DockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-        if (Test-Path $DockerExe) {
-            try {
-                # HKLM for all users auto-start
-                New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Docker Desktop" -PropertyType String -Value "`"$DockerExe`"" -Force -ErrorAction Stop | Out-Null
-                Write-Host "Docker set to auto-start (HKLM) successfully." -ForegroundColor Green
+                try {
+                    Write-Host "Ensuring Docker Background Service is set to Auto-Start..." -ForegroundColor Cyan
+                    sc.exe config com.docker.service start= auto | Out-Null
+                    Write-Host "Docker background service set to Auto." -ForegroundColor Green
+                }
+                catch {
+                    Write-Warning "Failed to set Docker service start mode. Continuing..."
+                }
             }
-            catch {
-                Write-Warning "Failed to set Docker auto-start registry key in HKLM. Continuing..."
-            }
-
-            try {
-                Write-Host "Ensuring Docker Background Service is set to Auto-Start..." -ForegroundColor Cyan
-                sc.exe config com.docker.service start= auto | Out-Null
-                Write-Host "Docker background service set to Auto." -ForegroundColor Green
-            }
-            catch {
-                Write-Warning "Failed to set Docker service start mode. Continuing..."
-            }
+            
+            # Clean up downloaded installer
+            Remove-Item $dockerInstallerPath -Force -ErrorAction SilentlyContinue
         }
-        # ========================================================
+        else {
+            Write-Error "Failed to download Docker Desktop installer. File not found at $dockerInstallerPath"
+        }
     }
-    else {
-        Write-Error "Docker installer (Docker Desktop Installer.exe) not found in $PSScriptRoot"
+    catch {
+        Write-Error "Failed to download Docker Desktop installer: $_"
+        Write-Host "Please check your internet connection and try again." -ForegroundColor Red
+        exit 1
     }
 }
 
